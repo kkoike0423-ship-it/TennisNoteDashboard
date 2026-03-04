@@ -1,0 +1,64 @@
+-- 1. Create players table
+CREATE TABLE public.players (
+    player_id UUID PRIMARY KEY,
+    first_name TEXT,
+    last_name TEXT,
+    full_name TEXT,
+    team TEXT,
+    category TEXT,
+    gender TEXT,
+    school_type TEXT,
+    update_ym TEXT,
+    ranking_point INTEGER
+);
+
+-- 2. Create player_ranking_history table
+CREATE TABLE public.player_ranking_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    player_id UUID REFERENCES public.players(player_id) ON DELETE CASCADE,
+    year_month TEXT NOT NULL,
+    points_raw INTEGER,
+    points_value INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE
+);
+
+-- 3. Create category_rankings table
+CREATE TABLE public.category_rankings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    category TEXT NOT NULL,
+    player_id UUID REFERENCES public.players(player_id) ON DELETE CASCADE,
+    year_month TEXT NOT NULL,
+    rank INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE
+);
+
+-- 4. Create user_watched_players table (for dashboard multi-player graphing limit 20)
+CREATE TABLE public.user_watched_players (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- Supabase internal auth ID
+    player_id UUID REFERENCES public.players(player_id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    UNIQUE(user_id, player_id) -- A user watches a player only once
+);
+
+-- Security: Enable Row Level Security (RLS)
+ALTER TABLE public.players ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.player_ranking_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.category_rankings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_watched_players ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+-- (For now, anyone authenticated can read the common data)
+CREATE POLICY "Authenticated users can read players" ON public.players FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can read history" ON public.player_ranking_history FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can read category" ON public.category_rankings FOR SELECT USING (auth.role() = 'authenticated');
+
+-- Players can only be inserted via the Admin script (assuming all authenticated can insert right now for demo)
+CREATE POLICY "Authenticated users can insert players" ON public.players FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can insert history" ON public.player_ranking_history FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can insert category" ON public.category_rankings FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+-- Users can only read, insert, delete their own watched list
+CREATE POLICY "Users can fully manage their watched list" ON public.user_watched_players FOR ALL USING (auth.uid() = user_id);
