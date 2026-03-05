@@ -1,6 +1,6 @@
 -- 1. Create players table
 CREATE TABLE public.players (
-    player_id UUID PRIMARY KEY,
+    player_id TEXT PRIMARY KEY,
     first_name TEXT,
     last_name TEXT,
     full_name TEXT,
@@ -15,7 +15,7 @@ CREATE TABLE public.players (
 -- 2. Create player_ranking_history table
 CREATE TABLE public.player_ranking_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    player_id UUID REFERENCES public.players(player_id) ON DELETE CASCADE,
+    player_id TEXT REFERENCES public.players(player_id) ON DELETE CASCADE,
     year_month TEXT NOT NULL,
     points_raw INTEGER,
     points_value INTEGER,
@@ -27,7 +27,7 @@ CREATE TABLE public.player_ranking_history (
 CREATE TABLE public.category_rankings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     category TEXT NOT NULL,
-    player_id UUID REFERENCES public.players(player_id) ON DELETE CASCADE,
+    player_id TEXT REFERENCES public.players(player_id) ON DELETE CASCADE,
     year_month TEXT NOT NULL,
     rank INTEGER,
     created_at TIMESTAMP WITH TIME ZONE,
@@ -38,7 +38,7 @@ CREATE TABLE public.category_rankings (
 CREATE TABLE public.user_watched_players (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- Supabase internal auth ID
-    player_id UUID REFERENCES public.players(player_id) ON DELETE CASCADE,
+    player_id TEXT REFERENCES public.players(player_id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     UNIQUE(user_id, player_id) -- A user watches a player only once
 );
