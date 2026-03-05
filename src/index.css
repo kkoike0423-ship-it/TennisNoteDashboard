@@ -1,7 +1,43 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
+@theme {
+  --color-tennis-green-50: #F5F7F6;
+  --color-tennis-green-100: #EEF5EF;
+  --color-tennis-green-200: #E0F2E9;
+  --color-tennis-green-500: #2C8F6A;
+  --color-tennis-green-700: #1F6F52;
+  --color-tennis-green-900: #1C3D32;
+  --color-tennis-surface: #F7FAF8;
+
+  --font-sans: "Inter", "Roboto", "system-ui", "sans-serif";
+
+  --animate-fade-in: fadeIn 0.5s ease-out;
+  --animate-slide-up: slideUp 0.5s ease-out;
+
+  @keyframes fadeIn {
+    0% {
+      opacity: 0;
+    }
+
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    0% {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+}
+
+/* Base resets & styles matching old tailwind configuration */
 @layer base {
   body {
     @apply bg-tennis-green-50 text-tennis-green-900 font-sans antialiased min-h-screen selection:bg-tennis-green-200 selection:text-tennis-green-900;
