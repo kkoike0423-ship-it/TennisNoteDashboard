@@ -7,9 +7,16 @@ import PlayerSearch from './components/PlayerSearch';
 import MultiPlayerChart from './components/MultiPlayerChart';
 import { LogOut, Upload, BarChart3 } from 'lucide-react';
 
+import { Trash2, Users, UserCheck } from 'lucide-react';
+import type { Player } from './types/database';
+
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [activeMenu, setActiveMenu] = useState<'overview' | 'import'>('overview');
+  const [managedPlayers, setManagedPlayers] = useState<Player[]>([]);
+  const [activeManagedPlayerId, setActiveManagedPlayerId] = useState<string | null>(null);
+
+  const activeManagedPlayer = managedPlayers.find(p => p.player_id === activeManagedPlayerId);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -24,6 +31,81 @@ function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const fetchManagedPlayers = async () => {
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    if (!currentSession) return;
+
+    const { data: watchedRecords } = await supabase
+      .from('user_watched_players')
+      .select('player_id, created_at')
+      .eq('user_id', currentSession.user.id)
+      .eq('player_type', 'managed')
+      .order('created_at', { ascending: false });
+
+    if (watchedRecords && watchedRecords.length > 0) {
+      const pIds = watchedRecords.map(w => w.player_id);
+      const { data: players } = await supabase
+        .from('players')
+        .select('*')
+        .in('player_id', pIds);
+
+      if (players) {
+        // Maintain the sort order from watchedRecords (most recent first)
+        const sortedPlayers = pIds.map(id => players.find(p => p.player_id === id)).filter(Boolean) as Player[];
+        setManagedPlayers(sortedPlayers);
+
+        // If no active selection yet, or the selection is no longer in the list, set to the latest
+        if (!activeManagedPlayerId || !pIds.includes(activeManagedPlayerId)) {
+          setActiveManagedPlayerId(sortedPlayers[0].player_id);
+        }
+      }
+    } else {
+      setManagedPlayers([]);
+      setActiveManagedPlayerId(null);
+    }
+  };
+
+  const handleDeleteManagedPlayer = async () => {
+    if (!activeManagedPlayerId || !session) return;
+    const confirmDelete = window.confirm(`「${activeManagedPlayer?.full_name || activeManagedPlayerId}」を管理リストから削除しますか？紐づく対戦相手の情報もすべて削除されます。`);
+    if (!confirmDelete) return;
+
+    // 1. Delete all associated opponents first
+    await supabase
+      .from('user_watched_players')
+      .delete()
+      .eq('user_id', session.user.id)
+      .eq('target_managed_player_id', activeManagedPlayerId);
+
+    // 2. Delete the managed player entry
+    const { error } = await supabase
+      .from('user_watched_players')
+      .delete()
+      .eq('user_id', session.user.id)
+      .eq('player_id', activeManagedPlayerId)
+      .eq('player_type', 'managed');
+
+    if (!error) {
+      await fetchManagedPlayers();
+    }
+  };
+
+  useEffect(() => {
+    if (session) {
+      fetchManagedPlayers();
+
+      // Listen for managed player registration events to refresh the dropdown
+      const handleRefresh = (e: Event) => {
+        const detail = (e as CustomEvent).detail;
+        if (detail?.playerType === 'managed') {
+          fetchManagedPlayers();
+        }
+      };
+      window.addEventListener('watched-players-changed', handleRefresh);
+      return () => window.removeEventListener('watched-players-changed', handleRefresh);
+    }
+  }, [session]);
 
   if (!session) {
     return <Auth />;
@@ -94,17 +176,92 @@ function App() {
 
             {activeMenu === 'overview' && (
               <div className="space-y-12">
-                <section>
-                  <h2 className="text-2xl font-bold text-tennis-green-900 mb-4 border-b border-tennis-green-200 pb-2">管理選手 (Managed Players)</h2>
-                  <MultiPlayerChart playerType="managed" title="管理選手の状況" />
-                  <PlayerSearch playerType="managed" title="管理選手を検索・登録" />
+                {/* Managed Player Selection Section */}
+                <section className="glass-panel p-6 shadow-sm border-l-4 border-l-tennis-green-500">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-700">
+                        <Users size={24} />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-800">管理対象の選手を選択</h3>
+                        <p className="text-sm text-gray-500">切り替えることで、それぞれの対戦相手を表示します</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <select
+                        className="bg-white border border-tennis-green-200 text-gray-700 py-2 px-4 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-tennis-green-500 appearance-none min-w-[200px]"
+                        value={activeManagedPlayerId || ''}
+                        onChange={(e) => setActiveManagedPlayerId(e.target.value)}
+                        disabled={managedPlayers.length === 0}
+                      >
+                        {managedPlayers.length === 0 ? (
+                          <option value="">登録選手なし</option>
+                        ) : (
+                          managedPlayers.map(p => (
+                            <option key={p.player_id} value={p.player_id}>
+                              {p.full_name || `${p.last_name} ${p.first_name}`} ({p.player_id})
+                            </option>
+                          ))
+                        )}
+                      </select>
+                      <div className="pointer-events-none -ml-10 z-10 text-tennis-green-600">
+                        ▼
+                      </div>
+                      <button
+                        onClick={handleDeleteManagedPlayer}
+                        disabled={!activeManagedPlayerId}
+                        className="ml-2 p-2.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-rose-100 bg-white"
+                        title="この管理選手を削除"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+                  </div>
                 </section>
 
                 <section>
-                  <h2 className="text-2xl font-bold text-tennis-green-900 mb-4 border-b border-tennis-green-200 pb-2">対戦相手 (Opponents)</h2>
-                  <MultiPlayerChart playerType="opponent" title="対戦相手の状況" />
-                  <PlayerSearch playerType="opponent" title="対戦相手を検索・登録" />
+                  <div className="flex justify-between items-end mb-4 border-b border-tennis-green-200 pb-2">
+                    <h2 className="text-2xl font-bold text-tennis-green-900 flex items-center">
+                      <UserCheck className="mr-2" /> 管理選手 (Managed Players)
+                    </h2>
+                  </div>
+                  <MultiPlayerChart
+                    playerType="managed"
+                    title="管理選手の状況"
+                    activeManagedPlayerId={activeManagedPlayerId}
+                  />
+                  <PlayerSearch
+                    playerType="managed"
+                    title="新しく管理選手を追加"
+                    activeManagedPlayerId={activeManagedPlayerId}
+                  />
                 </section>
+
+                {activeManagedPlayerId ? (
+                  <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex justify-between items-end mb-4 border-b border-tennis-green-200 pb-2">
+                      <h2 className="text-2xl font-bold text-tennis-green-900">
+                        「{activeManagedPlayer?.full_name || activeManagedPlayerId}」の対戦相手 (Opponents)
+                      </h2>
+                    </div>
+                    <MultiPlayerChart
+                      playerType="opponent"
+                      title={`${activeManagedPlayer?.full_name || '選手'}の対戦相手の推移`}
+                      activeManagedPlayerId={activeManagedPlayerId}
+                    />
+                    <PlayerSearch
+                      playerType="opponent"
+                      title="対戦相手を検索・登録"
+                      activeManagedPlayerId={activeManagedPlayerId}
+                    />
+                  </section>
+                ) : (
+                  <div className="text-center py-20 bg-white/30 rounded-2xl border-2 border-dashed border-gray-200">
+                    <p className="text-gray-400">管理選手を登録または選択すると、ここに対戦相手の情報が表示されます。</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

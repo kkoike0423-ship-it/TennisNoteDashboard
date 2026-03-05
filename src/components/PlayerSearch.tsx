@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Check, Loader2, User } from 'lucide-react';
+import { Search, Plus, Trash2, Loader2, User } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import type { Player } from '../types/database';
 
 interface PlayerSearchProps {
     playerType: 'managed' | 'opponent';
     title: string;
+    activeManagedPlayerId: string | null;
 }
 
-export default function PlayerSearch({ playerType, title }: PlayerSearchProps) {
+export default function PlayerSearch({ playerType, title, activeManagedPlayerId }: PlayerSearchProps) {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<Player[]>([]);
     const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set());
@@ -21,18 +22,28 @@ export default function PlayerSearch({ playerType, title }: PlayerSearchProps) {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            const { data, error } = await supabase
+            let dbQuery = supabase
                 .from('user_watched_players')
                 .select('player_id')
                 .eq('user_id', session.user.id)
                 .eq('player_type', playerType);
+
+            if (playerType === 'opponent') {
+                if (!activeManagedPlayerId) {
+                    setWatchedIds(new Set());
+                    return;
+                }
+                dbQuery = dbQuery.eq('target_managed_player_id', activeManagedPlayerId);
+            }
+
+            const { data, error } = await dbQuery;
 
             if (!error && data) {
                 setWatchedIds(new Set(data.map(d => d.player_id)));
             }
         };
         fetchWatched();
-    }, [playerType]);
+    }, [playerType, activeManagedPlayerId]);
 
     // Search DB based on query
     useEffect(() => {
@@ -69,12 +80,18 @@ export default function PlayerSearch({ playerType, title }: PlayerSearchProps) {
 
         if (watchedIds.has(playerId)) {
             // Remove
-            await supabase
+            let dbQuery = supabase
                 .from('user_watched_players')
                 .delete()
                 .eq('user_id', session.user.id)
                 .eq('player_id', playerId)
                 .eq('player_type', playerType);
+
+            if (playerType === 'opponent' && activeManagedPlayerId) {
+                dbQuery = dbQuery.eq('target_managed_player_id', activeManagedPlayerId);
+            }
+
+            await dbQuery;
 
             setWatchedIds(prev => {
                 const next = new Set(prev);
@@ -84,14 +101,29 @@ export default function PlayerSearch({ playerType, title }: PlayerSearchProps) {
         } else {
             // Add
             if (watchedIds.size >= 20) {
-                alert("You can watch a maximum of 20 players at a time.");
+                alert("登録は最大20名までです。不要な選手を削除してから追加してください。");
                 setActionLoading(null);
                 return;
             }
 
+            const insertData: any = {
+                user_id: session.user.id,
+                player_id: playerId,
+                player_type: playerType
+            };
+
+            if (playerType === 'opponent') {
+                if (!activeManagedPlayerId) {
+                    alert("管理選手を選択してから登録してください。");
+                    setActionLoading(null);
+                    return;
+                }
+                insertData.target_managed_player_id = activeManagedPlayerId;
+            }
+
             await supabase
                 .from('user_watched_players')
-                .insert({ user_id: session.user.id, player_id: playerId, player_type: playerType });
+                .insert(insertData);
 
             setWatchedIds(prev => new Set(prev).add(playerId));
         }
@@ -141,7 +173,7 @@ export default function PlayerSearch({ playerType, title }: PlayerSearchProps) {
                                     onClick={() => handleToggleWatch(player.player_id)}
                                     disabled={actionLoading === player.player_id}
                                     className={`p-2 rounded-full transition-all flex items-center justify-center w-10 h-10 ${isWatched
-                                        ? 'bg-tennis-green-500 text-white hover:bg-red-500 group-hover:bg-red-50 hover:text-red-600'
+                                        ? 'bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white'
                                         : 'bg-gray-100 text-gray-500 hover:bg-tennis-green-100 hover:text-tennis-green-600'
                                         }`}
                                     title={isWatched ? "Remove from watched" : "Add to watched"}
@@ -149,11 +181,10 @@ export default function PlayerSearch({ playerType, title }: PlayerSearchProps) {
                                     {actionLoading === player.player_id ? (
                                         <Loader2 className="w-5 h-5 animate-spin" />
                                     ) : isWatched ? (
-                                        <Check className="w-5 h-5 pointer-events-none group-hover:hidden" />
+                                        <Trash2 className="w-5 h-5" />
                                     ) : (
                                         <Plus className="w-5 h-5" />
                                     )}
-                                    {isWatched && <span className="hidden group-hover:block text-xs font-bold -ml-[2px] mt-[1px]">✕</span>}
                                 </button>
                             </li>
                         );

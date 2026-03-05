@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabaseClient';
-import type { Player, PlayerRankingHistory, CategoryRanking } from '../types/database';
+import type { Player, CategoryRanking } from '../types/database';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
@@ -20,14 +20,13 @@ const getColor = (_id: string, index: number) => {
 interface MultiPlayerChartProps {
     playerType: 'managed' | 'opponent';
     title: string;
+    activeManagedPlayerId: string | null;
 }
 
-export default function MultiPlayerChart({ playerType, title }: MultiPlayerChartProps) {
+export default function MultiPlayerChart({ playerType, title, activeManagedPlayerId }: MultiPlayerChartProps) {
     const [loading, setLoading] = useState(true);
     const [watchedPlayers, setWatchedPlayers] = useState<Player[]>([]);
-    const [rankingData, setRankingData] = useState<PlayerRankingHistory[]>([]);
     const [categoryData, setCategoryData] = useState<CategoryRanking[]>([]);
-    const [activeTab, setActiveTab] = useState<'points' | 'category'>('points');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -36,11 +35,28 @@ export default function MultiPlayerChart({ playerType, title }: MultiPlayerChart
             if (!session) return;
 
             // 1. Get watched player IDs
-            const { data: watchedIds } = await supabase
+            let dbQuery = supabase
                 .from('user_watched_players')
                 .select('player_id')
                 .eq('user_id', session.user.id)
                 .eq('player_type', playerType);
+
+            if (playerType === 'opponent') {
+                if (!activeManagedPlayerId) {
+                    setWatchedPlayers([]);
+                    setLoading(false);
+                    return;
+                }
+                dbQuery = dbQuery.eq('target_managed_player_id', activeManagedPlayerId);
+            } else if (playerType === 'managed') {
+                // For managed section, only show the currently active one in the chart 
+                // (Requirement: if 1 is selected, show that 1)
+                if (activeManagedPlayerId) {
+                    dbQuery = dbQuery.eq('player_id', activeManagedPlayerId);
+                }
+            }
+
+            const { data: watchedIds } = await dbQuery;
 
             if (!watchedIds || watchedIds.length === 0) {
                 setWatchedPlayers([]);
@@ -58,17 +74,7 @@ export default function MultiPlayerChart({ playerType, title }: MultiPlayerChart
 
             if (players) setWatchedPlayers(players as Player[]);
 
-            // 3. Fetch History for those players
-            // For thousands of rows, this should be paginated or date-limited, but we fetch all for now
-            const { data: history } = await supabase
-                .from('player_ranking_history')
-                .select('*')
-                .in('player_id', pIds)
-                .order('year_month', { ascending: true });
-
-            if (history) setRankingData(history as PlayerRankingHistory[]);
-
-            // 4. Fetch Category Rankings
+            // 3. Fetch Category Rankings
             const { data: category } = await supabase
                 .from('category_rankings')
                 .select('*')
@@ -94,36 +100,95 @@ export default function MultiPlayerChart({ playerType, title }: MultiPlayerChart
         return () => {
             window.removeEventListener('watched-players-changed', handleUpdate);
         };
-    }, [playerType]);
-
-    // Transform 'player_ranking_history' into Rechart's expected format (Series of YearMonths)
-    const chartDataPoints = useMemo(() => {
-        const map = new Map<string, any>(); // key = yearMonth, value = { yearMonth, [playerId]: points }
-
-        rankingData.forEach(item => {
-            const existing = map.get(item.year_month) || { yearMonth: item.year_month };
-            existing[item.player_id] = item.points_value;
-            map.set(item.year_month, existing);
-        });
-
-        return Array.from(map.values()).sort((a, b) => a.yearMonth.localeCompare(b.yearMonth));
-    }, [rankingData]);
+    }, [playerType, activeManagedPlayerId]);
 
     // Transfrom 'category_rankings'
     const chartDataCategory = useMemo(() => {
         const map = new Map<string, any>();
 
         categoryData.forEach(item => {
-            // Combining yearMonth and category as X-Axis or just yearMonth grouped by category.
-            // For simplicity, we assume one category type is primarily viewed, or we just plot Raw Rank
-            const xKey = `${item.year_month} (${item.category})`;
+            const xKey = item.year_month;
             const existing = map.get(xKey) || { label: xKey };
-            existing[item.player_id] = item.rank;
+            existing[`${item.player_id}_${item.category}`] = item.rank;
             map.set(xKey, existing);
         });
 
         return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
     }, [categoryData]);
+
+    // Helper function to get the next category logically
+    const getNextCategory = (cat: string) => {
+        if (!cat) return null;
+        const uMatch = cat.match(/U(\d+)/i);
+        if (uMatch) {
+            const num = parseInt(uMatch[1], 10);
+            if (num < 18) {
+                // Common steps in junior tennis: U10 -> U11 -> U12 -> U13 -> U14 -> U15 -> U16 -> U18
+                if (num === 16) return 'U18';
+                return `U${num + 1}`;
+            }
+        }
+        return null;
+    };
+
+    // For 'managed' view, the primary category is the active player's category
+    // For 'opponent' view, we need to find the category of the activeManagedPlayerId
+    const [primaryManagedCategory, setPrimaryManagedCategory] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchPrimaryCategory = async () => {
+            if (!activeManagedPlayerId) {
+                setPrimaryManagedCategory(null);
+                return;
+            }
+
+            const { data } = await supabase
+                .from('players')
+                .select('category')
+                .eq('player_id', activeManagedPlayerId)
+                .single();
+
+            if (data) {
+                setPrimaryManagedCategory(data.category);
+            }
+        };
+        fetchPrimaryCategory();
+    }, [activeManagedPlayerId]);
+
+    // Unique category lines to draw
+    const categoryLines = useMemo(() => {
+        const linesMap = new Map<string, { playerId: string; category: string }>();
+
+        categoryData.forEach(item => {
+            const player = watchedPlayers.find(p => p.player_id === item.player_id);
+            if (!player) return;
+
+            const currentCat = player.category;
+            const nextCat = getNextCategory(currentCat);
+
+            let shouldInclude = false;
+
+            if (playerType === 'managed') {
+                // ■ 管理選手グラフ: 本人のカテゴリ ＋ 本人の次のカテゴリー
+                if (item.category === currentCat || item.category === nextCat) {
+                    shouldInclude = true;
+                }
+            } else {
+                // ■ 対戦相手グラフ: 管理選手のカテゴリ ＋ 対戦相手本人のカテゴリ
+                if (item.category === currentCat || (primaryManagedCategory && item.category === primaryManagedCategory)) {
+                    shouldInclude = true;
+                }
+            }
+
+            if (shouldInclude) {
+                const key = `${item.player_id}_${item.category}`;
+                if (!linesMap.has(key)) {
+                    linesMap.set(key, { playerId: item.player_id, category: item.category });
+                }
+            }
+        });
+        return Array.from(linesMap.values());
+    }, [categoryData, watchedPlayers, playerType, primaryManagedCategory]);
 
     if (loading) {
         return (
@@ -154,50 +219,10 @@ export default function MultiPlayerChart({ playerType, title }: MultiPlayerChart
                         {title} ({watchedPlayers.length}/20)
                     </h3>
                 </div>
-                <div className="flex bg-gray-100 rounded-lg p-1">
-                    <button
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${activeTab === 'points' ? 'bg-white shadow text-tennis-green-700' : 'text-gray-500 hover:text-gray-700'}`}
-                        onClick={() => setActiveTab('points')}
-                    >
-                        Points History
-                    </button>
-                    <button
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${activeTab === 'category' ? 'bg-white shadow text-tennis-green-700' : 'text-gray-500 hover:text-gray-700'}`}
-                        onClick={() => setActiveTab('category')}
-                    >
-                        Category Ranking
-                    </button>
-                </div>
             </div>
 
             <div className="h-[400px] w-full">
-                {activeTab === 'points' && chartDataPoints.length > 0 && (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartDataPoints} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                            <XAxis dataKey="yearMonth" tick={{ fill: '#6b7280', fontSize: 12 }} tickLine={false} axisLine={false} />
-                            <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} tickLine={false} axisLine={false} />
-                            <Tooltip
-                                contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            />
-                            <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                            {watchedPlayers.map((player, idx) => (
-                                <Line
-                                    key={player.player_id}
-                                    type="monotone"
-                                    dataKey={player.player_id}
-                                    name={player.full_name || player.last_name || player.player_id}
-                                    stroke={getColor(player.player_id, idx)}
-                                    strokeWidth={2}
-                                    dot={{ r: 3, strokeWidth: 2 }}
-                                    activeDot={{ r: 6 }}
-                                />
-                            ))}
-                        </LineChart>
-                    </ResponsiveContainer>
-                )}
-
-                {activeTab === 'category' && chartDataCategory.length > 0 && (
+                {chartDataCategory.length > 0 && (
                     <ResponsiveContainer width="100%" height="100%">
                         {/* Note: reversed Y-axis is standard for Ranks (1 is highest) */}
                         <LineChart data={chartDataCategory} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
@@ -208,28 +233,50 @@ export default function MultiPlayerChart({ playerType, title }: MultiPlayerChart
                                 contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                             />
                             <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                            {watchedPlayers.map((player, idx) => (
-                                <Line
-                                    key={player.player_id}
-                                    type="monotone"
-                                    dataKey={player.player_id}
-                                    name={player.full_name || player.last_name || player.player_id}
-                                    stroke={getColor(player.player_id, idx)}
-                                    strokeWidth={2}
-                                    dot={{ r: 3, strokeWidth: 2 }}
-                                    activeDot={{ r: 6 }}
-                                />
-                            ))}
+                            {categoryLines.map((lineDef) => {
+                                const player = watchedPlayers.find(p => p.player_id === lineDef.playerId);
+                                if (!player) return null;
+
+                                const playerIdx = watchedPlayers.findIndex(p => p.player_id === lineDef.playerId);
+
+                                // Color logic based on requirements
+                                let isHighlighted = false;
+                                if (playerType === 'managed') {
+                                    // 管理選手: 本人のカテゴリが強調される
+                                    isHighlighted = player.category === lineDef.category;
+                                } else {
+                                    // 対戦相手: 管理選手と同じカテゴリのグラフ側に色をつける
+                                    isHighlighted = primaryManagedCategory === lineDef.category;
+                                    // 万が一管理選手カテゴリがない場合は本人カテゴリをつける
+                                    if (!primaryManagedCategory) isHighlighted = player.category === lineDef.category;
+                                }
+
+                                const baseColor = getColor(player.player_id, playerIdx);
+
+                                return (
+                                    <Line
+                                        key={`${lineDef.playerId}_${lineDef.category}`}
+                                        type="monotone"
+                                        dataKey={`${lineDef.playerId}_${lineDef.category}`}
+                                        name={`${player.full_name || player.last_name || player.player_id} (${lineDef.category})`}
+                                        stroke={isHighlighted ? baseColor : '#d1d5db'}
+                                        strokeDasharray={isHighlighted ? undefined : "5 5"}
+                                        strokeWidth={isHighlighted ? 3 : 2}
+                                        dot={{ r: isHighlighted ? 4 : 2, strokeWidth: 2 }}
+                                        activeDot={{ r: 6 }}
+                                        connectNulls
+                                    />
+                                );
+                            })}
                         </LineChart>
                     </ResponsiveContainer>
                 )}
 
-                {((activeTab === 'points' && chartDataPoints.length === 0) ||
-                    (activeTab === 'category' && chartDataCategory.length === 0)) && (
-                        <div className="h-full flex items-center justify-center text-gray-400">
-                            No history data available for the selected players.
-                        </div>
-                    )}
+                {chartDataCategory.length === 0 && (
+                    <div className="h-full flex items-center justify-center text-gray-400">
+                        No ranking data available for the selected players.
+                    </div>
+                )}
             </div>
         </div>
     );
