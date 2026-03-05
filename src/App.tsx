@@ -5,9 +5,7 @@ import Auth from './components/Auth';
 import DashboardOverview from './components/DashboardOverview';
 import PlayerSearch from './components/PlayerSearch';
 import MultiPlayerChart from './components/MultiPlayerChart';
-import { LogOut, Upload, BarChart3 } from 'lucide-react';
-
-import { Trash2, Users, UserCheck } from 'lucide-react';
+import { Trash2, Users, UserCheck, Menu, X, LogOut, Upload, BarChart3 } from 'lucide-react';
 import type { Player } from './types/database';
 
 function App() {
@@ -15,6 +13,7 @@ function App() {
   const [activeMenu, setActiveMenu] = useState<'overview' | 'import'>('overview');
   const [managedPlayers, setManagedPlayers] = useState<Player[]>([]);
   const [activeManagedPlayerId, setActiveManagedPlayerId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const activeManagedPlayer = managedPlayers.find(p => p.player_id === activeManagedPlayerId);
 
@@ -113,18 +112,40 @@ function App() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-tennis-green-50">
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-30 transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-tennis-green-100 flex flex-col transition-all z-20">
-        <div className="h-16 flex items-center px-6 border-b border-tennis-green-100">
-          <div className="w-8 h-8 bg-tennis-green-500 rounded-lg flex items-center justify-center mr-3">
-            <span className="text-white font-bold text-sm">TN</span>
+      <aside className={`
+        fixed lg:static inset-y-0 left-0 w-64 bg-white border-r border-tennis-green-100 flex flex-col transition-all duration-300 z-40
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-tennis-green-100">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-tennis-green-500 rounded-lg flex items-center justify-center mr-3">
+              <span className="text-white font-bold text-sm">TN</span>
+            </div>
+            <span className="font-bold text-tennis-green-900 text-lg">Dashboard</span>
           </div>
-          <span className="font-bold text-tennis-green-900 text-lg">Dashboard</span>
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="lg:hidden p-1 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-2">
           <button
-            onClick={() => setActiveMenu('overview')}
+            onClick={() => {
+              setActiveMenu('overview');
+              setIsSidebarOpen(false);
+            }}
             className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'overview'
               ? 'bg-tennis-green-50 text-tennis-green-700'
               : 'text-gray-600 hover:bg-tennis-green-50 hover:text-tennis-green-700'
@@ -135,7 +156,10 @@ function App() {
           </button>
 
           <button
-            onClick={() => setActiveMenu('import')}
+            onClick={() => {
+              setActiveMenu('import');
+              setIsSidebarOpen(false);
+            }}
             className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'import'
               ? 'bg-tennis-green-50 text-tennis-green-700'
               : 'text-gray-600 hover:bg-tennis-green-50 hover:text-tennis-green-700'
@@ -159,10 +183,18 @@ function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-tennis-green-100 flex items-center justify-between px-8 z-10">
-          <h2 className="text-xl font-semibold text-gray-800">
-            {activeMenu === 'overview' ? 'Player Analytics' : 'Data Management'}
-          </h2>
+        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-tennis-green-100 flex items-center justify-between px-4 lg:px-8 z-10">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-2 text-gray-600 hover:bg-tennis-green-50 rounded-lg transition-colors"
+            >
+              <Menu size={24} />
+            </button>
+            <h2 className="text-lg lg:text-xl font-semibold text-gray-800 truncate">
+              {activeMenu === 'overview' ? 'Player Analytics' : 'Data Management'}
+            </h2>
+          </div>
           <div className="flex items-center gap-4">
             <span className="text-sm border border-tennis-green-200 bg-tennis-green-50 text-tennis-green-700 px-3 py-1 rounded-full font-medium">
               {session.user.email}
@@ -170,7 +202,7 @@ function App() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-8 z-10 relative">
+        <div className="flex-1 overflow-auto p-4 lg:p-8 z-10 relative">
           <div className="max-w-6xl mx-auto space-y-6">
             {activeMenu === 'import' && <DashboardOverview />}
 

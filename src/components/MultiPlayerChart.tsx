@@ -221,7 +221,7 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                 </div>
             </div>
 
-            <div className="h-[400px] w-full">
+            <div className="h-[300px] md:h-[400px] w-full">
                 {chartDataCategory.length > 0 && (
                     <ResponsiveContainer width="100%" height="100%">
                         {/* Note: reversed Y-axis is standard for Ranks (1 is highest) */}
