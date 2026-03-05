@@ -93,10 +93,19 @@ function App() {
             {activeMenu === 'import' && <DashboardOverview />}
 
             {activeMenu === 'overview' && (
-              <>
-                <MultiPlayerChart />
-                <PlayerSearch />
-              </>
+              <div className="space-y-12">
+                <section>
+                  <h2 className="text-2xl font-bold text-tennis-green-900 mb-4 border-b border-tennis-green-200 pb-2">管理選手 (Managed Players)</h2>
+                  <MultiPlayerChart playerType="managed" title="管理選手の状況" />
+                  <PlayerSearch playerType="managed" title="管理選手を検索・登録" />
+                </section>
+
+                <section>
+                  <h2 className="text-2xl font-bold text-tennis-green-900 mb-4 border-b border-tennis-green-200 pb-2">対戦相手 (Opponents)</h2>
+                  <MultiPlayerChart playerType="opponent" title="対戦相手の状況" />
+                  <PlayerSearch playerType="opponent" title="対戦相手を検索・登録" />
+                </section>
+              </div>
             )}
           </div>
         </div>

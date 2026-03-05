@@ -3,7 +3,12 @@ import { Search, Plus, Check, Loader2, User } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import type { Player } from '../types/database';
 
-export default function PlayerSearch() {
+interface PlayerSearchProps {
+    playerType: 'managed' | 'opponent';
+    title: string;
+}
+
+export default function PlayerSearch({ playerType, title }: PlayerSearchProps) {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<Player[]>([]);
     const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set());
@@ -19,14 +24,15 @@ export default function PlayerSearch() {
             const { data, error } = await supabase
                 .from('user_watched_players')
                 .select('player_id')
-                .eq('user_id', session.user.id);
+                .eq('user_id', session.user.id)
+                .eq('player_type', playerType);
 
             if (!error && data) {
                 setWatchedIds(new Set(data.map(d => d.player_id)));
             }
         };
         fetchWatched();
-    }, []);
+    }, [playerType]);
 
     // Search DB based on query
     useEffect(() => {
@@ -67,7 +73,8 @@ export default function PlayerSearch() {
                 .from('user_watched_players')
                 .delete()
                 .eq('user_id', session.user.id)
-                .eq('player_id', playerId);
+                .eq('player_id', playerId)
+                .eq('player_type', playerType);
 
             setWatchedIds(prev => {
                 const next = new Set(prev);
@@ -84,16 +91,17 @@ export default function PlayerSearch() {
 
             await supabase
                 .from('user_watched_players')
-                .insert({ user_id: session.user.id, player_id: playerId });
+                .insert({ user_id: session.user.id, player_id: playerId, player_type: playerType });
 
             setWatchedIds(prev => new Set(prev).add(playerId));
         }
         setActionLoading(null);
+        window.dispatchEvent(new CustomEvent('watched-players-changed', { detail: { playerType } }));
     };
 
     return (
         <div className="glass-panel p-6 shadow-sm mt-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Find Players to Watch</h3>
+            <h3 className="text-lg font-bold text-gray-800 mb-4">{title}</h3>
 
             <div className="relative mb-6">
                 <Search className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
@@ -133,8 +141,8 @@ export default function PlayerSearch() {
                                     onClick={() => handleToggleWatch(player.player_id)}
                                     disabled={actionLoading === player.player_id}
                                     className={`p-2 rounded-full transition-all flex items-center justify-center w-10 h-10 ${isWatched
-                                            ? 'bg-tennis-green-500 text-white hover:bg-red-500 group-hover:bg-red-50 hover:text-red-600'
-                                            : 'bg-gray-100 text-gray-500 hover:bg-tennis-green-100 hover:text-tennis-green-600'
+                                        ? 'bg-tennis-green-500 text-white hover:bg-red-500 group-hover:bg-red-50 hover:text-red-600'
+                                        : 'bg-gray-100 text-gray-500 hover:bg-tennis-green-100 hover:text-tennis-green-600'
                                         }`}
                                     title={isWatched ? "Remove from watched" : "Add to watched"}
                                 >

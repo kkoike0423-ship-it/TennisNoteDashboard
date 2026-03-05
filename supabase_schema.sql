@@ -45,8 +45,9 @@ CREATE TABLE public.user_watched_players (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- Supabase internal auth ID
     player_id TEXT REFERENCES public.players(player_id) ON DELETE CASCADE,
+    player_type TEXT DEFAULT 'managed',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
-    UNIQUE(user_id, player_id) -- A user watches a player only once
+    UNIQUE(user_id, player_id, player_type)
 );
 
 -- Security: Enable Row Level Security (RLS)

@@ -17,7 +17,12 @@ const getColor = (_id: string, index: number) => {
     return colors[index % colors.length];
 };
 
-export default function MultiPlayerChart() {
+interface MultiPlayerChartProps {
+    playerType: 'managed' | 'opponent';
+    title: string;
+}
+
+export default function MultiPlayerChart({ playerType, title }: MultiPlayerChartProps) {
     const [loading, setLoading] = useState(true);
     const [watchedPlayers, setWatchedPlayers] = useState<Player[]>([]);
     const [rankingData, setRankingData] = useState<PlayerRankingHistory[]>([]);
@@ -34,7 +39,8 @@ export default function MultiPlayerChart() {
             const { data: watchedIds } = await supabase
                 .from('user_watched_players')
                 .select('player_id')
-                .eq('user_id', session.user.id);
+                .eq('user_id', session.user.id)
+                .eq('player_type', playerType);
 
             if (!watchedIds || watchedIds.length === 0) {
                 setWatchedPlayers([]);
@@ -76,21 +82,19 @@ export default function MultiPlayerChart() {
 
         fetchData();
 
-        // Set up a real-time subscription for changes to the user's watched list
-        const channel = supabase.channel('custom-all-channel')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'user_watched_players' },
-                () => {
-                    fetchData(); // re-fetch on change
-                }
-            )
-            .subscribe();
+        const handleUpdate = (e: Event) => {
+            const customEvent = e as CustomEvent;
+            if (customEvent.detail?.playerType === playerType) {
+                fetchData();
+            }
+        };
+
+        window.addEventListener('watched-players-changed', handleUpdate);
 
         return () => {
-            supabase.removeChannel(channel);
+            window.removeEventListener('watched-players-changed', handleUpdate);
         };
-    }, []);
+    }, [playerType]);
 
     // Transform 'player_ranking_history' into Rechart's expected format (Series of YearMonths)
     const chartDataPoints = useMemo(() => {
@@ -147,7 +151,7 @@ export default function MultiPlayerChart() {
                 <div>
                     <h3 className="text-lg font-bold text-gray-800 flex items-center">
                         <TrendingUp className="mr-2 h-5 w-5 text-tennis-green-600" />
-                        Performance Comparison ({watchedPlayers.length}/20 Players)
+                        {title} ({watchedPlayers.length}/20)
                     </h3>
                 </div>
                 <div className="flex bg-gray-100 rounded-lg p-1">
