@@ -1,3 +1,9 @@
+-- Drop existing tables to allow re-running this script
+DROP TABLE IF EXISTS public.user_watched_players CASCADE;
+DROP TABLE IF EXISTS public.category_rankings CASCADE;
+DROP TABLE IF EXISTS public.player_ranking_history CASCADE;
+DROP TABLE IF EXISTS public.players CASCADE;
+
 -- 1. Create players table
 CREATE TABLE public.players (
     player_id TEXT PRIMARY KEY,
