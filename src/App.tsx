@@ -152,22 +152,24 @@ function App() {
               }`}
           >
             <BarChart3 className="w-5 h-5 mr-3" />
-            Overview & Charts
+            分析ダッシュボード
           </button>
 
-          <button
-            onClick={() => {
-              setActiveMenu('import');
-              setIsSidebarOpen(false);
-            }}
-            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'import'
-              ? 'bg-tennis-green-50 text-tennis-green-700'
-              : 'text-gray-600 hover:bg-tennis-green-50 hover:text-tennis-green-700'
-              }`}
-          >
-            <Upload className="w-5 h-5 mr-3" />
-            Import CSV Data
-          </button>
+          {session?.user?.email === 'kkoike0423@gmail.com' && (
+            <button
+              onClick={() => {
+                setActiveMenu('import');
+                setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'import'
+                ? 'bg-tennis-green-50 text-tennis-green-700'
+                : 'text-gray-600 hover:bg-tennis-green-50 hover:text-tennis-green-700'
+                }`}
+            >
+              <Upload className="w-5 h-5 mr-3" />
+              CSVデータ取込
+            </button>
+          )}
         </nav>
 
         <div className="p-4 border-t border-tennis-green-100">
@@ -176,7 +178,7 @@ function App() {
             className="flex items-center w-full px-4 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           >
             <LogOut className="w-5 h-5 mr-3" />
-            Sign Out
+            ログアウト
           </button>
         </div>
       </aside>
@@ -192,7 +194,7 @@ function App() {
               <Menu size={24} />
             </button>
             <h2 className="text-lg lg:text-xl font-semibold text-gray-800 truncate">
-              {activeMenu === 'overview' ? 'TennisNoteWeb' : 'Data Management'}
+              {activeMenu === 'overview' ? '分析ダッシュボード' : 'CSVデータ取込'}
             </h2>
           </div>
           <div className="flex items-center gap-4">
