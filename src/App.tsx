@@ -268,7 +268,7 @@ function App() {
                   />
                   <PlayerSearch
                     playerType="managed"
-                    title="新しく管理選手を追加"
+                    title="管理選手を検索・登録・削除"
                     activeManagedPlayerId={activeManagedPlayerId}
                   />
                 </section>
@@ -281,17 +281,12 @@ function App() {
                       </h2>
                     </div>
                     <div className="space-y-8">
-                      <MultiPlayerChart
+                      <PlayerSearch
                         playerType="opponent"
-                        title={`${activeManagedPlayer?.full_name || '選手'}の対戦相手の推移`}
+                        title={`「${managedPlayers.find(p => p.player_id === activeManagedPlayerId)?.last_name}」の対戦相手を検索・登録・削除`}
                         activeManagedPlayerId={activeManagedPlayerId}
                       />
                     </div>
-                    <PlayerSearch
-                      playerType="opponent"
-                      title="対戦相手を検索・登録"
-                      activeManagedPlayerId={activeManagedPlayerId}
-                    />
                   </section>
                 ) : (
                   <div className="text-center py-20 bg-white/30 rounded-2xl border-2 border-dashed border-gray-200">

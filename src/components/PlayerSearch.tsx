@@ -179,7 +179,7 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                 <input
                     className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tennis-green-500 focus:border-transparent outline-none transition-all bg-white/70"
                     type="text"
-                    placeholder="Search by name, team, or ID (e.g., Tanaka, TN-1, Alpha Team)"
+                    placeholder="名前、チーム、またはIDで検索 (例: 田中, TN-1, ライズ)"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                 />
@@ -202,7 +202,7 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                                     <div>
                                         <p className="font-semibold text-gray-800">{player.full_name || `${player.last_name} ${player.first_name}`}</p>
                                         <div className="flex gap-3 text-xs text-gray-500">
-                                            <span>{player.team || 'No Team'}</span>
+                                            <span>{player.team || 'チームなし'}</span>
                                             <span>•</span>
                                             <span>{player.category}</span>
                                             <span>•</span>
@@ -242,7 +242,7 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                                     <div>
                                         <p className="font-semibold text-gray-800 text-base">{player.full_name || `${player.last_name} ${player.first_name}`}</p>
                                         <div className="flex gap-3 text-xs">
-                                            <span>{player.team || 'No Team'}</span>
+                                            <span>{player.team || 'チームなし'}</span>
                                             <span>•</span>
                                             <span>{player.category}</span>
                                             <span>•</span>
@@ -273,7 +273,7 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                     })}
                 </ul>
             ) : query.length > 1 ? (
-                <p className="text-gray-500 text-center py-4">No players found matching your query.</p>
+                <p className="text-gray-500 text-center py-4">該当する選手が見つかりません。</p>
             ) : null}
         </div>
     );
