@@ -5,12 +5,13 @@ import Auth from './components/Auth';
 import DashboardOverview from './components/DashboardOverview';
 import PlayerSearch from './components/PlayerSearch';
 import MultiPlayerChart from './components/MultiPlayerChart';
-import { Trash2, Users, UserCheck, Menu, X, LogOut, Upload, BarChart3 } from 'lucide-react';
+import TournamentAnalysis from './components/TournamentAnalysis';
+import { Trash2, Users, UserCheck, Menu, X, LogOut, Upload, BarChart3, Search } from 'lucide-react';
 import type { Player } from './types/database';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
-  const [activeMenu, setActiveMenu] = useState<'overview' | 'import'>('overview');
+  const [activeMenu, setActiveMenu] = useState<'overview' | 'import' | 'tournament'>('overview');
   const [managedPlayers, setManagedPlayers] = useState<Player[]>([]);
   const [activeManagedPlayerId, setActiveManagedPlayerId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -155,6 +156,20 @@ function App() {
             分析ダッシュボード
           </button>
 
+          <button
+            onClick={() => {
+              setActiveMenu('tournament');
+              setIsSidebarOpen(false);
+            }}
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'tournament'
+              ? 'bg-tennis-green-50 text-tennis-green-700'
+              : 'text-gray-600 hover:bg-tennis-green-50 hover:text-tennis-green-700'
+              }`}
+          >
+            <Search className="w-5 h-5 mr-3" />
+            トーナメント分析
+          </button>
+
           {session?.user?.email === 'kkoike0423@gmail.com' && (
             <button
               onClick={() => {
@@ -194,7 +209,8 @@ function App() {
               <Menu size={24} />
             </button>
             <h2 className="text-lg lg:text-xl font-semibold text-gray-800 truncate">
-              {activeMenu === 'overview' ? '分析ダッシュボード' : 'CSVデータ取込'}
+              {activeMenu === 'overview' ? '分析ダッシュボード' :
+                activeMenu === 'tournament' ? 'トーナメント分析' : 'CSVデータ取込'}
             </h2>
           </div>
           <div className="flex items-center gap-4">
@@ -207,6 +223,7 @@ function App() {
         <div className="flex-1 overflow-auto p-4 lg:p-8 z-10 relative">
           <div className="max-w-6xl mx-auto space-y-6">
             {activeMenu === 'import' && <DashboardOverview />}
+            {activeMenu === 'tournament' && <TournamentAnalysis />}
 
             {activeMenu === 'overview' && (
               <div className="space-y-12">
@@ -255,12 +272,7 @@ function App() {
                   </div>
                 </section>
 
-                <section>
-                  <div className="flex justify-between items-end mb-4 border-b border-tennis-green-200 pb-2">
-                    <h2 className="text-2xl font-bold text-tennis-green-900 flex items-center">
-                      <UserCheck className="mr-2" /> 管理選手 (Managed Players)
-                    </h2>
-                  </div>
+                <div className="grid grid-cols-1 gap-12">
                   <MultiPlayerChart
                     playerType="managed"
                     title="管理選手"
@@ -271,13 +283,16 @@ function App() {
                     title="管理選手を検索・登録・削除"
                     activeManagedPlayerId={activeManagedPlayerId}
                   />
-                </section>
+                </div>
 
                 {activeManagedPlayerId ? (
-                  <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="flex justify-between items-end mb-4 border-b border-tennis-green-200 pb-2">
-                      <h2 className="text-2xl font-bold text-tennis-green-900">
-                        「{activeManagedPlayer?.full_name || activeManagedPlayerId}」の対戦相手 (Opponents)
+                  <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-700">
+                        <UserCheck size={24} />
+                      </div>
+                      <h2 className="text-2xl font-bold text-gray-800">
+                        「{activeManagedPlayer?.last_name || '選手'}」の対戦相手分析
                       </h2>
                     </div>
                     <div className="space-y-8">
@@ -290,7 +305,9 @@ function App() {
                   </section>
                 ) : (
                   <div className="text-center py-20 bg-white/30 rounded-2xl border-2 border-dashed border-gray-200">
-                    <p className="text-gray-400">管理選手を登録または選択すると、ここに対戦相手の情報が表示されます。</p>
+                    <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-600">管理選手が選択されていません</h3>
+                    <p className="text-gray-500 mt-2">上のプルダウンから選手を選択するか、新しく登録してください</p>
                   </div>
                 )}
               </div>
