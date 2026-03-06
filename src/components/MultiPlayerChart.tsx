@@ -174,8 +174,8 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                     shouldInclude = true;
                 }
             } else {
-                // ■ 対戦相手グラフ: 管理選手のカテゴリ ＋ 対戦相手本人のカテゴリ
-                if (item.category === currentCat || (primaryManagedCategory && item.category === primaryManagedCategory)) {
+                // ■ 対戦相手グラフ: 管理選手と同じカテゴリーのみを表示
+                if (primaryManagedCategory && item.category === primaryManagedCategory) {
                     shouldInclude = true;
                 }
             }
