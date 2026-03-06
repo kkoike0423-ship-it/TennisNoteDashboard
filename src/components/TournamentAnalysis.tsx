@@ -1,10 +1,14 @@
 import { useState, useRef } from 'react';
-import { FileText, Search, Loader2, Upload, CheckCircle2, ChevronRight, X } from 'lucide-react';
+import {
+    FileText, Search, Loader2, Upload, CheckCircle2,
+    X, ZoomIn, ZoomOut, RefreshCw, AlertCircle, Info
+} from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import { NameNormalizer } from '../utils/NameNormalizer';
 import type { Player } from '../types/database';
 import * as pdfjs from 'pdfjs-dist';
 import { createWorker } from 'tesseract.js';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
 // Initialize PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
@@ -13,7 +17,9 @@ interface MatchResult {
     originalText: string;
     normalizedText: string;
     player: Player | null;
-    rank: string | null;
+    rank: number | null;
+    points: number | null;
+    category: string | null;
     confidence: number;
 }
 
@@ -22,6 +28,7 @@ export default function TournamentAnalysis() {
     const [processingStep, setProcessingStep] = useState('');
     const [results, setResults] = useState<MatchResult[]>([]);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [isPdf, setIsPdf] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,12 +37,16 @@ export default function TournamentAnalysis() {
 
         setLoading(true);
         setResults([]);
-        setPreviewUrl(URL.createObjectURL(file));
+
+        const isPdfFile = file.type === 'application/pdf';
+        setIsPdf(isPdfFile);
 
         try {
-            if (file.type === 'application/pdf') {
+            if (isPdfFile) {
                 await processPdf(file);
             } else if (file.type.startsWith('image/')) {
+                const url = URL.createObjectURL(file);
+                setPreviewUrl(url);
                 await processImage(file);
             } else {
                 alert('PDFまたは画像ファイルを選択してください。');
@@ -49,20 +60,22 @@ export default function TournamentAnalysis() {
     };
 
     const processPdf = async (file: File) => {
-        setProcessingStep('PDFを読み込み中...');
+        setProcessingStep('PDFを解析中...');
         const arrayBuffer = await file.arrayBuffer();
         const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
         const pdf = await loadingTask.promise;
 
         const allMatchedResults: MatchResult[] = [];
-
-        // Process up to first 3 pages to avoid timeout/blocking
         const pagesToProcess = Math.min(pdf.numPages, 3);
 
+        // For PDF, we'll use a canvas of the first page as the "preview image"
+        // because iframe doesn't allow zoom easily
+        let previewSet = false;
+
         for (let i = 1; i <= pagesToProcess; i++) {
-            setProcessingStep(`ページ ${i}/${pagesToProcess} をOCR処理中...`);
+            setProcessingStep(`ページ ${i}/${pagesToProcess} を読み取り中...`);
             const page = await pdf.getPage(i);
-            const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better OCR
+            const viewport = page.getViewport({ scale: 2.5 }); // High resolution for OCR
 
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
@@ -70,8 +83,13 @@ export default function TournamentAnalysis() {
             canvas.width = viewport.width;
 
             if (context) {
-                // Add canvas to RenderParameters if required by types, though context is the primary one
                 await (page as any).render({ canvasContext: context, viewport, canvas }).promise;
+
+                if (!previewSet) {
+                    setPreviewUrl(canvas.toDataURL());
+                    previewSet = true;
+                }
+
                 const pageResults = await performOcr(canvas);
                 allMatchedResults.push(...pageResults);
             }
@@ -81,7 +99,7 @@ export default function TournamentAnalysis() {
     };
 
     const processImage = async (file: File) => {
-        setProcessingStep('画像をOCR処理中...');
+        setProcessingStep('画像を解析中...');
         const img = new Image();
         img.src = URL.createObjectURL(file);
         await new Promise((resolve) => { img.onload = resolve; });
@@ -98,30 +116,25 @@ export default function TournamentAnalysis() {
 
     const performOcr = async (canvas: HTMLCanvasElement): Promise<MatchResult[]> => {
         const worker = await createWorker('jpn');
-
         const { data } = await worker.recognize(canvas);
-
         const matches: MatchResult[] = [];
-
-        // Use any to bypass strict type check if lines property is missing in certain versions
         const lines = (data as any).lines || [];
 
         for (const line of lines) {
             const rawText = line.text.trim();
-            // Basic filtering for noise / short strings
             if (rawText.length < 2 || /^[0-9\s\-/,.]+$/.test(rawText)) continue;
 
             const normalized = NameNormalizer.normalizeForMatching(rawText);
             if (!normalized) continue;
 
-            // Match against database
+            // Search for player
             const playerMatch = await findBestPlayerMatch(normalized);
 
             if (playerMatch) {
-                // Fetch latest rank for this player
-                const { data: rankingData } = await supabase
-                    .from('rankings')
-                    .select('rank, category')
+                // Fetch ranking and points for the player's category
+                const { data: rankData } = await supabase
+                    .from('category_rankings')
+                    .select('rank, year_month, category')
                     .eq('player_id', playerMatch.player_id)
                     .order('year_month', { ascending: false })
                     .limit(1);
@@ -130,7 +143,9 @@ export default function TournamentAnalysis() {
                     originalText: rawText,
                     normalizedText: normalized,
                     player: playerMatch,
-                    rank: rankingData && rankingData[0] ? `${rankingData[0].category} / ${rankingData[0].rank}位` : 'ランク無',
+                    rank: rankData?.[0]?.rank || null,
+                    points: playerMatch.ranking_point || null,
+                    category: rankData?.[0]?.category || playerMatch.category || null,
                     confidence: line.confidence
                 });
             }
@@ -141,47 +156,75 @@ export default function TournamentAnalysis() {
     };
 
     const findBestPlayerMatch = async (normalized: string): Promise<Player | null> => {
-        // Simple strategy: check if normalized name exists in our DB
-        // In a real app, we'd use a more sophisticated similarity match
+        // Try exact match or ilike match in DB
         const { data } = await supabase
             .from('players')
             .select('*')
-            .or(`full_name.ilike.%${normalized}%,last_name.ilike.%${normalized}%,first_name.ilike.%${normalized}%`)
+            .or(`full_name.ilike.%${normalized}%,last_name.ilike.%${normalized}%`)
             .limit(1);
 
         return data?.[0] || null;
     };
 
     const finalizeResults = (allMatches: MatchResult[]) => {
-        // Duid-duplicate based on player_id
-        const uniqueMatches = Array.from(new Map(allMatches.map(m => [m.player?.player_id, m])).values());
-        setResults(uniqueMatches);
+        // Deduplicate and filter out low confidence duplicates if any
+        const map = new Map();
+        allMatches.forEach(m => {
+            const id = m.player?.player_id;
+            if (!map.has(id) || map.get(id).confidence < m.confidence) {
+                map.set(id, m);
+            }
+        });
+        setResults(Array.from(map.values()));
         setLoading(false);
         setProcessingStep('');
     };
 
     return (
-        <div className="space-y-6 container mx-auto px-4 py-8 max-w-5xl animate-fade-in">
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-6 container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-tennis-green-100 pb-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-tennis-green-900 flex items-center">
+                    <h1 className="text-3xl font-bold font-display text-tennis-green-900 flex items-center">
                         <Search className="mr-3 h-8 w-8 text-tennis-green-600" />
                         トーナメント分析 (OCR)
                     </h1>
-                    <p className="text-tennis-green-600 mt-1">PDFや写真から選手名を読み取り、最新ランキングを自動表示します。</p>
+                    <p className="text-tennis-green-600 mt-1">
+                        トーナメント表を読み取り、対戦相手の最新ランキングとポイントを表示します。
+                    </p>
                 </div>
+                {previewUrl && (
+                    <button
+                        onClick={() => { setPreviewUrl(null); setResults([]); }}
+                        className="flex items-center gap-2 bg-rose-50 text-rose-600 px-4 py-2 rounded-xl border border-rose-100 hover:bg-rose-100 transition-colors"
+                    >
+                        <RefreshCw size={18} />
+                        リセット
+                    </button>
+                )}
             </header>
 
             {!previewUrl ? (
                 <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-tennis-green-200 rounded-3xl p-12 text-center bg-white/50 hover:bg-tennis-green-50 hover:border-tennis-green-400 transition-all cursor-pointer group"
+                    className="border-2 border-dashed border-tennis-green-200 rounded-3xl p-16 text-center bg-white/50 hover:bg-tennis-green-50 hover:border-tennis-green-400 transition-all cursor-pointer group shadow-sm"
                 >
-                    <div className="w-20 h-20 bg-tennis-green-100 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
-                        <Upload className="h-10 w-10 text-tennis-green-600" />
+                    <div className="w-24 h-24 bg-tennis-green-100 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                        <Upload className="h-12 w-12 text-tennis-green-600" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-800 mb-2">ファイルを選択またはドラッグ</h3>
-                    <p className="text-gray-500 max-w-xs mx-auto">トーナメント表のPDF、またはスマホで撮影した写真をアップロードしてください。</p>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">ファイルを選択またはドラッグ</h3>
+                    <p className="text-gray-500 max-w-md mx-auto mb-8 text-lg">
+                        ドロー表のPDF、またはスマホで撮影した写真をアップロードしてください。
+                    </p>
+                    <div className="flex justify-center gap-6">
+                        <div className="flex items-center gap-2 text-tennis-green-700 bg-tennis-green-100 px-4 py-2 rounded-full text-sm font-semibold">
+                            <FileText size={18} />
+                            PDF形式対応
+                        </div>
+                        <div className="flex items-center gap-2 text-blue-700 bg-blue-100 px-4 py-2 rounded-full text-sm font-semibold">
+                            <Search size={18} />
+                            画像形式(JPG/PNG)
+                        </div>
+                    </div>
                     <input
                         type="file"
                         ref={fileInputRef}
@@ -191,72 +234,136 @@ export default function TournamentAnalysis() {
                     />
                 </div>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Preview Side */}
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-tennis-green-100">
-                            <span className="font-medium text-gray-700">ファイルプレビュー</span>
-                            <button
-                                onClick={() => { setPreviewUrl(null); setResults([]); }}
-                                className="text-gray-400 hover:text-red-500 p-1 rounded-full hover:bg-red-50 transition-colors"
-                            >
-                                <X size={20} />
-                            </button>
+                <div className="flex flex-col lg:flex-row gap-8 h-[calc(100vh-250px)] min-h-[600px]">
+                    {/* Preview Side with Zoom */}
+                    <div className="lg:w-1/2 flex flex-col bg-white rounded-3xl shadow-lg border border-tennis-green-100 overflow-hidden relative">
+                        <div className="p-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/50">
+                            <div className="flex items-center gap-3">
+                                <Info size={18} className="text-tennis-green-600" />
+                                <span className="text-sm font-bold text-gray-700">ドロープレビュー (拡大・縮小・ドラッグ可能)</span>
+                            </div>
                         </div>
-                        <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-tennis-green-100 aspect-[3/4] flex items-center justify-center relative">
-                            {previewUrl && (
-                                <iframe src={previewUrl} className="w-full h-full border-none" title="Preview" />
-                            )}
+
+                        <div className="flex-1 bg-gray-900 relative">
                             {loading && (
-                                <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-20">
-                                    <Loader2 className="w-12 h-12 text-tennis-green-500 animate-spin mb-4" />
-                                    <p className="text-tennis-green-800 font-bold">{processingStep}</p>
+                                <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+                                    <Loader2 className="w-16 h-16 text-tennis-green-400 animate-spin mb-4" />
+                                    <p className="text-white text-xl font-bold tracking-wider">{processingStep}</p>
                                 </div>
                             )}
+
+                            <TransformWrapper
+                                initialScale={1}
+                                minScale={0.5}
+                                maxScale={5}
+                            >
+                                {({ zoomIn, zoomOut, resetTransform }) => (
+                                    <>
+                                        <div className="absolute bottom-6 right-6 z-40 flex flex-col gap-2">
+                                            <button onClick={() => zoomIn()} className="p-3 bg-white/90 rounded-full shadow-lg hover:bg-white text-gray-700 transition-all"><ZoomIn size={24} /></button>
+                                            <button onClick={() => zoomOut()} className="p-3 bg-white/90 rounded-full shadow-lg hover:bg-white text-gray-700 transition-all"><ZoomOut size={24} /></button>
+                                            <button onClick={() => resetTransform()} className="p-3 bg-white/90 rounded-full shadow-lg hover:bg-white text-gray-700 transition-all"><RefreshCw size={24} /></button>
+                                        </div>
+                                        <div className="w-full h-full flex items-center justify-center p-4">
+                                            <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full flex items-center justify-center">
+                                                <img
+                                                    src={previewUrl}
+                                                    alt="Preview"
+                                                    className="max-w-full max-h-full object-contain cursor-grab active:cursor-grabbing"
+                                                />
+                                            </TransformComponent>
+                                        </div>
+                                    </>
+                                )}
+                            </TransformWrapper>
                         </div>
                     </div>
 
-                    {/* Results Side */}
-                    <div className="space-y-4">
-                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-tennis-green-100 flex justify-between items-center">
-                            <h3 className="font-bold text-gray-800">認識された選手 ({results.length}名)</h3>
-                            {results.length > 0 && <CheckCircle2 className="text-tennis-green-500 w-5 h-5" />}
+                    {/* Results Table Side */}
+                    <div className="lg:w-1/2 flex flex-col bg-white rounded-3xl shadow-lg border border-tennis-green-100 overflow-hidden">
+                        <div className="p-6 border-b border-gray-50 bg-tennis-green-50/30 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-800">認識された選手一覧</h3>
+                                <p className="text-sm text-gray-500 mt-1">{results.length} 名のデータが見つかりました</p>
+                            </div>
+                            {results.length > 0 && (
+                                <div className="bg-tennis-green-500 text-white px-3 py-1 rounded-full text-xs font-bold animate-pulse">
+                                    解析完了
+                                </div>
+                            )}
                         </div>
 
-                        {results.length > 0 ? (
-                            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                                {results.map((res, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="bg-white/70 backdrop-blur-sm p-4 rounded-2xl border border-tennis-green-50 hover:border-tennis-green-200 transition-all shadow-sm group flex items-center justify-between"
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-700 font-bold">
-                                                {res.player?.last_name?.[0] || '選手'}
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-gray-800">{res.player?.full_name || res.player?.last_name}</span>
-                                                    <span className="text-[10px] bg-tennis-green-100 text-tennis-green-700 px-1.5 py-0.5 rounded font-medium">信頼度 {Math.round(res.confidence)}%</span>
-                                                </div>
-                                                <p className="text-xs text-gray-500 flex items-center">
-                                                    <span className="truncate max-w-[120px]">{res.player?.team || 'チーム無'}</span>
-                                                    <span className="mx-1.5">•</span>
-                                                    <span className="font-bold text-tennis-green-600">{res.rank}</span>
-                                                </p>
-                                                <p className="text-[10px] text-gray-400 mt-0.5 font-mono">認識テキスト: "{res.originalText}"</p>
-                                            </div>
-                                        </div>
-                                        <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-tennis-green-500 transition-colors" />
+                        <div className="flex-1 overflow-auto">
+                            {results.length > 0 ? (
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="sticky top-0 bg-white/90 backdrop-blur-md z-10 border-b border-gray-100 shadow-sm">
+                                        <tr>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">選手 / 認識</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">カテゴリ</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">順位 / pt</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">信頼度</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {results.map((res, idx) => (
+                                            <tr key={idx} className="hover:bg-tennis-green-50/50 transition-colors group">
+                                                <td className="px-6 py-5">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-700 font-bold shrink-0">
+                                                            {res.player?.last_name?.[0]}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-gray-800 text-lg">{res.player?.full_name}</p>
+                                                            <p className="text-xs text-gray-400 mt-1 italic group-hover:text-tennis-green-600 transition-colors">
+                                                                "{res.originalText}"
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5 text-center">
+                                                    <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold border border-blue-100">
+                                                        {res.category || '-'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-5 text-center">
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-tennis-green-600 font-black text-lg">
+                                                            {res.rank ? `${res.rank}位` : '-'}
+                                                        </span>
+                                                        <span className="text-[10px] text-gray-400 font-bold">
+                                                            {res.points?.toLocaleString() || '0'} pt
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5 text-right">
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                            <div
+                                                                className={`h-full ${res.confidence > 80 ? 'bg-tennis-green-500' : 'bg-orange-400'}`}
+                                                                style={{ width: `${res.confidence}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-[10px] font-bold text-gray-500">
+                                                            {Math.round(res.confidence)}%
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : !loading ? (
+                                <div className="h-full flex flex-col items-center justify-center p-12 text-center">
+                                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                                        <AlertCircle size={40} className="text-gray-200" />
                                     </div>
-                                ))}
-                            </div>
-                        ) : !loading ? (
-                            <div className="bg-white/50 border-2 border-dashed border-gray-200 rounded-2xl p-12 text-center">
-                                <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                <p className="text-gray-500">まだ結果がありません。ファイルを読み込むとここにランキングが表示されます。</p>
-                            </div>
-                        ) : null}
+                                    <h4 className="text-xl font-bold text-gray-700 mb-2">解析データがありません</h4>
+                                    <p className="text-gray-400 max-w-sm">
+                                        左側のエリアに大会ドローをアップロードしてください。自動的に選手情報が抽出されます。
+                                    </p>
+                                </div>
+                            ) : null}
+                        </div>
                     </div>
                 </div>
             )}
