@@ -259,9 +259,20 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                 {chartDataCategory.length > 0 && (
                     <ResponsiveContainer width="100%" height="100%">
                         {/* Note: reversed Y-axis is standard for Ranks (1 is highest) */}
-                        <LineChart data={chartDataCategory} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                        <LineChart data={chartDataCategory} margin={{ top: 5, right: 70, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                            <XAxis dataKey="label" tick={{ fill: '#6b7280', fontSize: 12 }} tickLine={false} axisLine={false} />
+                            <XAxis
+                                dataKey="label"
+                                tick={{ fill: '#6b7280', fontSize: 12 }}
+                                tickLine={false}
+                                axisLine={false}
+                                tickFormatter={(val) => {
+                                    if (typeof val === 'string' && val.length === 6) {
+                                        return `${val.slice(2, 4)}/${val.slice(4)}`;
+                                    }
+                                    return val;
+                                }}
+                            />
                             <YAxis reversed tick={{ fill: '#6b7280', fontSize: 12 }} tickLine={false} axisLine={false} domain={['dataMin - 1', 'dataMax + 1']} />
                             <Tooltip
                                 contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
