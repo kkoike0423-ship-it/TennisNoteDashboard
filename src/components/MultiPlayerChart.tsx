@@ -9,10 +9,26 @@ import { Loader2, TrendingUp, Presentation } from 'lucide-react';
 // Generates a consistent color for a given player ID
 const getColor = (_id: string, index: number) => {
     const colors = [
-        '#2C8F6A', '#1F6F52', '#E11D48', '#2563EB', '#D97706',
-        '#7C3AED', '#059669', '#DB2777', '#0284C7', '#CA8A04',
-        '#9333EA', '#16A34A', '#BE123C', '#1D4ED8', '#B45309',
-        '#6D28D9', '#047857', '#9D174D', '#0369A1', '#A16207'
+        '#2563EB', // Blue
+        '#E11D48', // Rose
+        '#D97706', // Orange
+        '#7C3AED', // Violet
+        '#0891B2', // Cyan
+        '#DB2777', // Pink
+        '#CA8A04', // Amber
+        '#9333EA', // Purple
+        '#059669', // Emerald (Green alternative)
+        '#BE123C', // Crimson
+        '#4F46E5', // Indigo
+        '#B45309', // Brown
+        '#1D4ED8', // Royal Blue
+        '#047857', // Dark Green
+        '#6D28D9', // Deep Purple
+        '#9D174D', // Maroon
+        '#0369A1', // Sky Blue
+        '#A16207', // Dark Gold
+        '#16A34A', // Green
+        '#0284C7'  // Light Blue
     ];
     return colors[index % colors.length];
 };
