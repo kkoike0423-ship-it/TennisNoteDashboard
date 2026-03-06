@@ -37,13 +37,14 @@ interface MultiPlayerChartProps {
     playerType: 'managed' | 'opponent';
     title: string;
     activeManagedPlayerId: string | null;
-    categoryScope?: 'current' | 'next'; // New prop
 }
 
-export default function MultiPlayerChart({ playerType, title, activeManagedPlayerId, categoryScope = 'current' }: MultiPlayerChartProps) {
+export default function MultiPlayerChart({ playerType, title, activeManagedPlayerId }: MultiPlayerChartProps) {
     const [loading, setLoading] = useState(true);
     const [watchedPlayers, setWatchedPlayers] = useState<Player[]>([]);
     const [categoryData, setCategoryData] = useState<CategoryRanking[]>([]);
+    const [selectedCategory, setSelectedCategory] = useState<string>("");
+    const [availableCategories, setAvailableCategories] = useState<string[]>([]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -103,7 +104,23 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                 .in('player_id', queryIds)
                 .order('year_month', { ascending: true });
 
-            if (category) setCategoryData(category as CategoryRanking[]);
+            if (category) {
+                setCategoryData(category as CategoryRanking[]);
+                const uniqueCats = Array.from(new Set((category as CategoryRanking[]).map(c => c.category))).sort();
+                setAvailableCategories(uniqueCats);
+            }
+
+            // Set initial selected category
+            if (activeManagedPlayerId) {
+                const { data: player } = await supabase
+                    .from('players')
+                    .select('category')
+                    .eq('player_id', activeManagedPlayerId)
+                    .single();
+                if (player && !selectedCategory) {
+                    setSelectedCategory(player.category);
+                }
+            }
 
             setLoading(false);
         };
@@ -124,94 +141,25 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
         };
     }, [playerType, activeManagedPlayerId]);
 
-    // Helper function to get the next category logically
-    const getNextCategory = (cat: string) => {
-        if (!cat) return null;
-        const uMatch = cat.match(/U(\d+)/i);
-        if (uMatch) {
-            const num = parseInt(uMatch[1], 10);
-            if (num < 18) {
-                // Common steps in junior tennis: U10 -> U11 -> U12 -> U13 -> U14 -> U15 -> U16 -> U18
-                if (num === 16) return 'U18';
-                return `U${num + 1}`;
-            }
-        }
-        return null;
-    };
 
-    // For 'managed' view, the primary category is the active player's category
-    // For 'opponent' view, we need to find the categories of the activeManagedPlayerId
-    const [managedCategories, setManagedCategories] = useState<string[]>([]);
-
-    useEffect(() => {
-        const fetchManagedCategories = async () => {
-            if (!activeManagedPlayerId) {
-                setManagedCategories([]);
-                return;
-            }
-
-            // Get all categories this managed player has ranking data for
-            const { data } = await supabase
-                .from('category_rankings')
-                .select('category, year_month')
-                .eq('player_id', activeManagedPlayerId);
-
-            if (data && data.length > 0) {
-                // Sort categories naturally (latest at the end or use month sorting)
-                const sortedRows = [...data].sort((a, b) => a.year_month.localeCompare(b.year_month));
-                const uniqueCats = Array.from(new Set(sortedRows.map(d => d.category)));
-                setManagedCategories(uniqueCats);
-            } else {
-                // Fallback to current category if no ranking history
-                const { data: player } = await supabase
-                    .from('players')
-                    .select('category')
-                    .eq('player_id', activeManagedPlayerId)
-                    .single();
-                if (player) setManagedCategories([player.category]);
-            }
-        };
-        fetchManagedCategories();
-    }, [activeManagedPlayerId]);
 
     // Transform 'category_rankings' to a format suitable for Recharts.
-    // Each month will have one value per player_id, which is the rank for the target category.
+    // Each month will have one value per player_id, which is the rank for the selected category.
     const chartDataCategory = useMemo(() => {
         const map = new Map<string, any>();
 
         categoryData.forEach(item => {
+            if (item.category !== selectedCategory) return;
+
             const xKey = item.year_month;
             const existing = map.get(xKey) || { label: xKey };
 
-            // Determine if this specific item's category is the one we want to show for this player at this time
-            let isTarget = false;
-            if (playerType === 'managed') {
-                const player = watchedPlayers.find(p => p.player_id === item.player_id);
-                if (player) {
-                    const nextCat = getNextCategory(player.category);
-                    isTarget = (item.category === player.category || item.category === (nextCat || ''));
-                }
-            } else {
-                const managedRankingAtThisTime = categoryData.find(
-                    cat => cat.player_id === activeManagedPlayerId && cat.year_month === item.year_month
-                );
-                const latestManagedCat = managedCategories.length > 0 ? managedCategories[managedCategories.length - 1] : null;
-
-                const targetCategory = managedRankingAtThisTime
-                    ? (categoryScope === 'current' ? managedRankingAtThisTime.category : getNextCategory(managedRankingAtThisTime.category))
-                    : (latestManagedCat ? (categoryScope === 'current' ? latestManagedCat : getNextCategory(latestManagedCat)) : null);
-
-                isTarget = (item.category === targetCategory);
-            }
-
-            if (isTarget) {
-                existing[item.player_id] = item.rank;
-            }
+            existing[item.player_id] = item.rank;
             map.set(xKey, existing);
         });
 
         return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
-    }, [categoryData, playerType, watchedPlayers, activeManagedPlayerId, categoryScope, managedCategories]);
+    }, [categoryData, selectedCategory]);
 
     // Unique player lines to draw (one line per player), sorted by latest rank
     const playerLines = useMemo(() => {
@@ -258,12 +206,29 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
 
     return (
         <div className="glass-panel p-6 shadow-sm mt-6">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <div>
                     <h3 className="text-lg font-bold text-gray-800 flex items-center">
                         <TrendingUp className="mr-2 h-5 w-5 text-tennis-green-600" />
                         {title} ({watchedPlayers.length}/10)
                     </h3>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <span className="text-sm font-medium text-gray-600 whitespace-nowrap">カテゴリー:</span>
+                    <select
+                        className="flex-1 sm:flex-none bg-white border border-tennis-green-200 text-gray-700 py-1.5 px-3 rounded-lg outline-none focus:ring-2 focus:ring-tennis-green-500 text-sm"
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                    >
+                        {availableCategories.length === 0 ? (
+                            <option value="">データなし</option>
+                        ) : (
+                            availableCategories.map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                            ))
+                        )}
+                    </select>
                 </div>
             </div>
 

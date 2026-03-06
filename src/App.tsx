@@ -281,14 +281,7 @@ function App() {
                     <div className="space-y-8">
                       <MultiPlayerChart
                         playerType="opponent"
-                        categoryScope="current"
-                        title={`${activeManagedPlayer?.full_name || '選手'}の対戦相手の推移 (同じカテゴリー)`}
-                        activeManagedPlayerId={activeManagedPlayerId}
-                      />
-                      <MultiPlayerChart
-                        playerType="opponent"
-                        categoryScope="next"
-                        title={`${activeManagedPlayer?.full_name || '選手'}の対戦相手の推移 (1つ上のカテゴリー)`}
+                        title={`${activeManagedPlayer?.full_name || '選手'}の対戦相手の推移`}
                         activeManagedPlayerId={activeManagedPlayerId}
                       />
                     </div>
