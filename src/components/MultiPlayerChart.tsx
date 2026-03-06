@@ -132,27 +132,37 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
     };
 
     // For 'managed' view, the primary category is the active player's category
-    // For 'opponent' view, we need to find the category of the activeManagedPlayerId
-    const [primaryManagedCategory, setPrimaryManagedCategory] = useState<string | null>(null);
+    // For 'opponent' view, we need to find the categories of the activeManagedPlayerId
+    const [managedCategories, setManagedCategories] = useState<string[]>([]);
+    const primaryManagedCategory = managedCategories[0] || null;
 
     useEffect(() => {
-        const fetchPrimaryCategory = async () => {
+        const fetchManagedCategories = async () => {
             if (!activeManagedPlayerId) {
-                setPrimaryManagedCategory(null);
+                setManagedCategories([]);
                 return;
             }
 
+            // Get all categories this managed player has ranking data for
             const { data } = await supabase
-                .from('players')
+                .from('category_rankings')
                 .select('category')
-                .eq('player_id', activeManagedPlayerId)
-                .single();
+                .eq('player_id', activeManagedPlayerId);
 
-            if (data) {
-                setPrimaryManagedCategory(data.category);
+            if (data && data.length > 0) {
+                const uniqueCats = Array.from(new Set(data.map(d => d.category)));
+                setManagedCategories(uniqueCats);
+            } else {
+                // Fallback to current category if no ranking history
+                const { data: player } = await supabase
+                    .from('players')
+                    .select('category')
+                    .eq('player_id', activeManagedPlayerId)
+                    .single();
+                if (player) setManagedCategories([player.category]);
             }
         };
-        fetchPrimaryCategory();
+        fetchManagedCategories();
     }, [activeManagedPlayerId]);
 
     // Unique category lines to draw
@@ -174,8 +184,8 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                     shouldInclude = true;
                 }
             } else {
-                // ■ 対戦相手グラフ: 管理選手と同じカテゴリーのみを表示
-                if (primaryManagedCategory && item.category === primaryManagedCategory) {
+                // ■ 対戦相手グラフ: 管理選手が属していたことのある全てのカテゴリーを表示
+                if (managedCategories.includes(item.category)) {
                     shouldInclude = true;
                 }
             }
@@ -188,7 +198,7 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
             }
         });
         return Array.from(linesMap.values());
-    }, [categoryData, watchedPlayers, playerType, primaryManagedCategory]);
+    }, [categoryData, watchedPlayers, playerType, managedCategories]);
 
     if (loading) {
         return (
@@ -245,7 +255,7 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                                     // 管理選手: 本人のカテゴリが強調される
                                     isHighlighted = player.category === lineDef.category;
                                 } else {
-                                    // 対戦相手: 管理選手と同じカテゴリのグラフ側に色をつける
+                                    // 対戦相手: 管理選手の現在のカテゴリと同じなら強調
                                     isHighlighted = primaryManagedCategory === lineDef.category;
                                     // 万が一管理選手カテゴリがない場合は本人カテゴリをつける
                                     if (!primaryManagedCategory) isHighlighted = player.category === lineDef.category;
