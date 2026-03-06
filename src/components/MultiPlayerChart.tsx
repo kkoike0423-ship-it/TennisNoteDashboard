@@ -302,7 +302,11 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                                             position="right"
                                             content={(props: any) => {
                                                 const { x, y, index, value } = props;
-                                                if (index !== chartDataCategory.length - 1 || value === undefined) return null;
+                                                if (value === undefined || value === null) return null;
+
+                                                // Only show label for the last available data point for this specific player
+                                                const isLastPoint = !chartDataCategory.slice(index + 1).some(d => d[playerId] !== undefined);
+                                                if (!isLastPoint) return null;
 
                                                 // Extract surname (first part of full_name or last_name)
                                                 const fullName = player.full_name || player.last_name || "";
