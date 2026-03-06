@@ -64,10 +64,10 @@ CREATE POLICY "Authenticated users can read players" ON public.players FOR SELEC
 CREATE POLICY "Authenticated users can read history" ON public.player_ranking_history FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Authenticated users can read category" ON public.category_rankings FOR SELECT USING (auth.role() = 'authenticated');
 
--- Players can only be inserted via the Admin script (assuming all authenticated can insert right now for demo)
-CREATE POLICY "Authenticated users can insert players" ON public.players FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-CREATE POLICY "Authenticated users can insert history" ON public.player_ranking_history FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-CREATE POLICY "Authenticated users can insert category" ON public.category_rankings FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+-- Players can be managed by any authenticated user (needed for UPSERT during upload)
+CREATE POLICY "Authenticated users can manage players" ON public.players FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can manage history" ON public.player_ranking_history FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users can manage category" ON public.category_rankings FOR ALL USING (auth.role() = 'authenticated');
 
 -- Users can only read, insert, delete their own watched list
 CREATE POLICY "Users can fully manage their watched list" ON public.user_watched_players FOR ALL USING (auth.uid() = user_id);
