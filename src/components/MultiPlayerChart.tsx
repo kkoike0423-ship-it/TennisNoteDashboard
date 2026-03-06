@@ -172,14 +172,17 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
 
         const idsArray = Array.from(playerIds);
 
-        // Sort by latest available rank (smaller rank = higher priority)
+        // Sort by latest available rank (smaller rank = higher priority/higher in graph)
         return idsArray.sort((a, b) => {
+            // Find the most recent month where player A has a rank
             const lastDataA = [...chartDataCategory].reverse().find(d => d[a] !== undefined);
             const lastDataB = [...chartDataCategory].reverse().find(d => d[b] !== undefined);
 
             const rankA = lastDataA ? lastDataA[a] : 999999;
             const rankB = lastDataB ? lastDataB[b] : 999999;
 
+            // If ranks are equal, sort by ID to be stable
+            if (rankA === rankB) return a.localeCompare(b);
             return rankA - rankB;
         });
     }, [categoryData, watchedPlayers, chartDataCategory]);
@@ -259,7 +262,7 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                                 const player = watchedPlayers.find(p => p.player_id === playerId);
                                 if (!player) return null;
 
-                                const playerIdx = watchedPlayers.findIndex(p => p.player_id === playerId);
+                                const playerIdx = playerLines.indexOf(playerId);
                                 const baseColor = getColor(player.player_id, playerIdx);
 
                                 return (
