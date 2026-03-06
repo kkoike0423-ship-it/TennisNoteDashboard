@@ -189,7 +189,15 @@ function App() {
           )}
         </nav>
 
-        <div className="p-4 border-t border-tennis-green-100">
+        <div className="p-4 border-t border-tennis-green-100 space-y-4">
+          <div className="bg-tennis-green-50 p-3 rounded-xl flex flex-col items-center">
+            <p className="text-[10px] text-tennis-green-600 mb-2 font-bold">スマホでアクセス</p>
+            <img
+              src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://tennis-note-dashboard.vercel.app"
+              alt="QR Code"
+              className="w-24 h-24 rounded shadow-sm border border-white"
+            />
+          </div>
           <button
             onClick={() => supabase.auth.signOut()}
             className="flex items-center w-full px-4 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
