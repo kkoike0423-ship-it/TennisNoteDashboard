@@ -213,7 +213,7 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
         return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
     }, [categoryData, playerType, watchedPlayers, activeManagedPlayerId, categoryScope, managedCategories]);
 
-    // Unique player lines to draw (one line per player)
+    // Unique player lines to draw (one line per player), sorted by latest rank
     const playerLines = useMemo(() => {
         const playerIds = new Set<string>();
         categoryData.forEach(item => {
@@ -221,8 +221,20 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                 playerIds.add(item.player_id);
             }
         });
-        return Array.from(playerIds);
-    }, [categoryData, watchedPlayers]);
+
+        const idsArray = Array.from(playerIds);
+
+        // Sort by latest available rank (smaller rank = higher priority)
+        return idsArray.sort((a, b) => {
+            const lastDataA = [...chartDataCategory].reverse().find(d => d[a] !== undefined);
+            const lastDataB = [...chartDataCategory].reverse().find(d => d[b] !== undefined);
+
+            const rankA = lastDataA ? lastDataA[a] : 999999;
+            const rankB = lastDataB ? lastDataB[b] : 999999;
+
+            return rankA - rankB;
+        });
+    }, [categoryData, watchedPlayers, chartDataCategory]);
 
     if (loading) {
         return (
