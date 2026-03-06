@@ -13,6 +13,7 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<Player[]>([]);
     const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set());
+    const [watchedPlayersList, setWatchedPlayersList] = useState<Player[]>([]);
     const [loading, setLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -39,7 +40,22 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
             const { data, error } = await dbQuery;
 
             if (!error && data) {
-                setWatchedIds(new Set(data.map(d => d.player_id)));
+                const ids = data.map(d => d.player_id);
+                setWatchedIds(new Set(ids));
+
+                // Also fetch full details for the list
+                if (ids.length > 0) {
+                    const { data: details } = await supabase
+                        .from('players')
+                        .select('*')
+                        .in('player_id', ids);
+                    if (details) setWatchedPlayersList(details as Player[]);
+                } else {
+                    setWatchedPlayersList([]);
+                }
+            } else {
+                setWatchedPlayersList([]);
+                setWatchedIds(new Set());
             }
         };
         fetchWatched();
@@ -128,6 +144,29 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
             setWatchedIds(prev => new Set(prev).add(playerId));
         }
         setActionLoading(null);
+        // Refresh local list immediately
+        const { data: { session: refreshSession } } = await supabase.auth.getSession();
+        if (refreshSession) {
+            let refreshQuery = supabase
+                .from('user_watched_players')
+                .select('player_id')
+                .eq('user_id', refreshSession.user.id)
+                .eq('player_type', playerType);
+            if (playerType === 'opponent' && activeManagedPlayerId) {
+                refreshQuery = refreshQuery.eq('target_managed_player_id', activeManagedPlayerId);
+            }
+            const { data: newIds } = await refreshQuery;
+            if (newIds) {
+                const ids = newIds.map(n => n.player_id);
+                setWatchedIds(new Set(ids));
+                if (ids.length > 0) {
+                    const { data: details } = await supabase.from('players').select('*').in('player_id', ids);
+                    if (details) setWatchedPlayersList(details as Player[]);
+                } else {
+                    setWatchedPlayersList([]);
+                }
+            }
+        }
         window.dispatchEvent(new CustomEvent('watched-players-changed', { detail: { playerType } }));
     };
 
@@ -147,6 +186,49 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                 {loading && <Loader2 className="absolute right-3 top-3.5 h-5 w-5 text-tennis-green-500 animate-spin" />}
             </div>
 
+            {/* Currently Registered Players List */}
+            {query.length === 0 && watchedPlayersList.length > 0 && (
+                <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <h4 className="text-sm font-semibold text-tennis-green-700 mb-3 bg-tennis-green-50 px-3 py-1 rounded inline-block">
+                        現在登録されている選手 ({watchedPlayersList.length})
+                    </h4>
+                    <ul className="divide-y divide-gray-100 border border-gray-100 rounded-xl bg-white/50 backdrop-blur-sm shadow-sm overflow-hidden">
+                        {watchedPlayersList.map((player) => (
+                            <li key={player.player_id} className="p-4 flex items-center justify-between hover:bg-white transition-colors">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-700">
+                                        <User size={20} />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-gray-800">{player.full_name || `${player.last_name} ${player.first_name}`}</p>
+                                        <div className="flex gap-3 text-xs text-gray-500">
+                                            <span>{player.team || 'No Team'}</span>
+                                            <span>•</span>
+                                            <span>{player.category}</span>
+                                            <span>•</span>
+                                            <span className="font-mono text-gray-400">{player.player_id}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => handleToggleWatch(player.player_id)}
+                                    disabled={actionLoading === player.player_id}
+                                    className="p-2.5 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-full transition-all shadow-sm flex items-center justify-center"
+                                    title="登録解除"
+                                >
+                                    {actionLoading === player.player_id ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                        <Trash2 className="w-5 h-5" />
+                                    )}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
+            {/* Search Results */}
             {results.length > 0 ? (
                 <ul className="divide-y divide-gray-100 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                     {results.map((player) => {
