@@ -278,11 +278,20 @@ function App() {
                         「{activeManagedPlayer?.full_name || activeManagedPlayerId}」の対戦相手 (Opponents)
                       </h2>
                     </div>
-                    <MultiPlayerChart
-                      playerType="opponent"
-                      title={`${activeManagedPlayer?.full_name || '選手'}の対戦相手の推移`}
-                      activeManagedPlayerId={activeManagedPlayerId}
-                    />
+                    <div className="space-y-8">
+                      <MultiPlayerChart
+                        playerType="opponent"
+                        categoryScope="current"
+                        title={`${activeManagedPlayer?.full_name || '選手'}の対戦相手の推移 (同じカテゴリー)`}
+                        activeManagedPlayerId={activeManagedPlayerId}
+                      />
+                      <MultiPlayerChart
+                        playerType="opponent"
+                        categoryScope="next"
+                        title={`${activeManagedPlayer?.full_name || '選手'}の対戦相手の推移 (1つ上のカテゴリー)`}
+                        activeManagedPlayerId={activeManagedPlayerId}
+                      />
+                    </div>
                     <PlayerSearch
                       playerType="opponent"
                       title="対戦相手を検索・登録"

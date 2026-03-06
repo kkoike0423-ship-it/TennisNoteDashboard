@@ -37,9 +37,10 @@ interface MultiPlayerChartProps {
     playerType: 'managed' | 'opponent';
     title: string;
     activeManagedPlayerId: string | null;
+    categoryScope?: 'current' | 'next'; // New prop
 }
 
-export default function MultiPlayerChart({ playerType, title, activeManagedPlayerId }: MultiPlayerChartProps) {
+export default function MultiPlayerChart({ playerType, title, activeManagedPlayerId, categoryScope = 'current' }: MultiPlayerChartProps) {
     const [loading, setLoading] = useState(true);
     const [watchedPlayers, setWatchedPlayers] = useState<Player[]>([]);
     const [categoryData, setCategoryData] = useState<CategoryRanking[]>([]);
@@ -150,7 +151,6 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
     // For 'managed' view, the primary category is the active player's category
     // For 'opponent' view, we need to find the categories of the activeManagedPlayerId
     const [managedCategories, setManagedCategories] = useState<string[]>([]);
-    const primaryManagedCategory = managedCategories[0] || null;
 
     useEffect(() => {
         const fetchManagedCategories = async () => {
@@ -200,9 +200,30 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                     shouldInclude = true;
                 }
             } else {
-                // ■ 対戦相手グラフ: 管理選手が属していたことのある全てのカテゴリーを表示
-                if (managedCategories.includes(item.category)) {
-                    shouldInclude = true;
+                // ■ 対戦相手グラフ: 
+                // 管理選手が各月においてどのカテゴリーにいたかを調べ、その「現在のカテゴリ」または「1つ上のカテゴリ」に一致するか判定
+                const managedRankingAtThisTime = categoryData.find(
+                    cat => cat.player_id === activeManagedPlayerId && cat.year_month === item.year_month
+                );
+
+                if (managedRankingAtThisTime) {
+                    const targetCategory = categoryScope === 'current'
+                        ? managedRankingAtThisTime.category
+                        : getNextCategory(managedRankingAtThisTime.category);
+
+                    if (item.category === targetCategory) {
+                        shouldInclude = true;
+                    }
+                } else if (managedCategories.includes(item.category)) {
+                    // 履歴がない月は、現在のカテゴリーリストに含まれていれば（フォールバック）
+                    const latestManagedCat = managedCategories[0];
+                    const targetCategory = categoryScope === 'current'
+                        ? latestManagedCat
+                        : getNextCategory(latestManagedCat);
+
+                    if (item.category === targetCategory) {
+                        shouldInclude = true;
+                    }
                 }
             }
 
@@ -214,7 +235,7 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
             }
         });
         return Array.from(linesMap.values());
-    }, [categoryData, watchedPlayers, playerType, managedCategories]);
+    }, [categoryData, watchedPlayers, playerType, managedCategories, categoryScope, activeManagedPlayerId]);
 
     if (loading) {
         return (
@@ -242,7 +263,7 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                 <div>
                     <h3 className="text-lg font-bold text-gray-800 flex items-center">
                         <TrendingUp className="mr-2 h-5 w-5 text-tennis-green-600" />
-                        {title} ({watchedPlayers.length}/20)
+                        {title} ({watchedPlayers.length}/10)
                     </h3>
                 </div>
             </div>
@@ -271,10 +292,9 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                                     // 管理選手: 本人のカテゴリが強調される
                                     isHighlighted = player.category === lineDef.category;
                                 } else {
-                                    // 対戦相手: 管理選手の現在のカテゴリと同じなら強調
-                                    isHighlighted = primaryManagedCategory === lineDef.category;
-                                    // 万が一管理選手カテゴリがない場合は本人カテゴリをつける
-                                    if (!primaryManagedCategory) isHighlighted = player.category === lineDef.category;
+                                    // 対戦相手: その月そのカテゴリーが「ターゲット」なら強調
+                                    // (ここは既に categoryLines でフィルタリングされているので基本 true になるはずだが、現在のカテゴリを優先して色付け)
+                                    isHighlighted = true;
                                 }
 
                                 const baseColor = getColor(player.player_id, playerIdx);

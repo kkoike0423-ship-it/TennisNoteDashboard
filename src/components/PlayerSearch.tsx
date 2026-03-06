@@ -116,8 +116,8 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
             });
         } else {
             // Add
-            if (watchedIds.size >= 20) {
-                alert("登録は最大20名までです。不要な選手を削除してから追加してください。");
+            if (watchedIds.size >= 10) {
+                alert("登録は最大10名までです。不要な選手を削除してから追加してください。");
                 setActionLoading(null);
                 return;
             }
@@ -190,7 +190,7 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
             {query.length === 0 && watchedPlayersList.length > 0 && (
                 <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
                     <h4 className="text-sm font-semibold text-tennis-green-700 mb-3 bg-tennis-green-50 px-3 py-1 rounded inline-block">
-                        現在登録されている選手 ({watchedPlayersList.length})
+                        現在登録されている選手 ({watchedPlayersList.length}/10)
                     </h4>
                     <ul className="divide-y divide-gray-100 border border-gray-100 rounded-xl bg-white/50 backdrop-blur-sm shadow-sm overflow-hidden">
                         {watchedPlayersList.map((player) => (
