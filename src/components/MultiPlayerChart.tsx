@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import type { Player, CategoryRanking } from '../types/database';
 import {
-    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList
 } from 'recharts';
 import { Loader2, TrendingUp, Presentation } from 'lucide-react';
 
@@ -285,7 +285,33 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                                         dot={{ r: 4, strokeWidth: 2 }}
                                         activeDot={{ r: 6 }}
                                         connectNulls
-                                    />
+                                    >
+                                        <LabelList
+                                            dataKey={playerId}
+                                            position="right"
+                                            content={(props: any) => {
+                                                const { x, y, index, value } = props;
+                                                if (index !== chartDataCategory.length - 1 || value === undefined) return null;
+
+                                                // Extract surname (first part of full_name or last_name)
+                                                const fullName = player.full_name || player.last_name || "";
+                                                const surname = fullName.split(' ')[0] || fullName.split('　')[0] || fullName;
+
+                                                return (
+                                                    <text
+                                                        x={x + 10}
+                                                        y={y + 4}
+                                                        fill={baseColor}
+                                                        fontSize={12}
+                                                        fontWeight="bold"
+                                                        className="drop-shadow-sm"
+                                                    >
+                                                        {surname}
+                                                    </text>
+                                                );
+                                            }}
+                                        />
+                                    </Line>
                                 );
                             })}
                         </LineChart>
