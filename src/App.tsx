@@ -130,7 +130,7 @@ function App() {
             <div className="w-8 h-8 bg-tennis-green-500 rounded-lg flex items-center justify-center mr-3">
               <span className="text-white font-bold text-sm">TN</span>
             </div>
-            <span className="font-bold text-tennis-green-900 text-lg">Dashboard</span>
+            <span className="font-bold text-tennis-green-900 text-lg">TennisNoteWeb</span>
           </div>
           <button
             onClick={() => setIsSidebarOpen(false)}
