@@ -192,7 +192,7 @@ function App() {
               <Menu size={24} />
             </button>
             <h2 className="text-lg lg:text-xl font-semibold text-gray-800 truncate">
-              {activeMenu === 'overview' ? 'Player Analytics' : 'Data Management'}
+              {activeMenu === 'overview' ? 'TennisNoteWeb' : 'Data Management'}
             </h2>
           </div>
           <div className="flex items-center gap-4">
