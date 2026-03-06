@@ -38,15 +38,15 @@ export const parseAndUploadZip = async (file: File, onProgress: (msg: string) =>
             onProgress('Parsing Players CSV...');
             const parsed = Papa.parse(playersCsv, { header: true, skipEmptyLines: true });
             const players: Player[] = (parsed.data as any[]).map(row => ({
-                player_id: row.playerId,
-                first_name: row.firstName,
-                last_name: row.lastName,
-                full_name: row.fullName,
-                team: row.team,
-                category: row.category,
-                gender: row.gender,
-                school_type: row.schoolType,
-                update_ym: row.updateYm,
+                player_id: (row.playerId || '').trim(),
+                first_name: (row.firstName || '').trim(),
+                last_name: (row.lastName || '').trim(),
+                full_name: (row.fullName || '').trim(),
+                team: (row.team || '').trim(),
+                category: (row.category || '').trim(),
+                gender: (row.gender || '').trim(),
+                school_type: (row.schoolType || '').trim(),
+                update_ym: (row.updateYm || '').trim(),
                 ranking_point: parseInt(row.rankingPoint) || 0
             })).filter(p => p.player_id); // ensure valid ID
 
@@ -84,13 +84,11 @@ export const parseAndUploadZip = async (file: File, onProgress: (msg: string) =>
             })).filter(r => r.player_id && r.year_month);
 
             onProgress(`Uploading ${historyRows.length} Ranking History records...`);
-            // Since this table doesn't have a natural unique constraint defined by us inside the App (relies on UUID), 
-            // we might just insert, but we should make sure we don't duplicate. 
-            // For simplicity in this demo, we will truncate the table and insert if we are the admin,
-            // but a better approach is a unique constraint on (player_id, year_month).
-            const { error } = await supabase.from('player_ranking_history').insert(historyRows);
-            // Ignore dupes or handle accordingly if a constraint exists
-            if (error && !error.message.includes('duplicate')) throw new Error(`History Upload Error: ${error.message}`);
+            const { error } = await supabase.from('player_ranking_history').upsert(
+                historyRows,
+                { onConflict: 'player_id, year_month' }
+            );
+            if (error) throw new Error(`History Upload Error: ${error.message}`);
         }
 
         // Process Category Rankings
@@ -98,17 +96,20 @@ export const parseAndUploadZip = async (file: File, onProgress: (msg: string) =>
             onProgress('Parsing Category Rankings CSV...');
             const parsed = Papa.parse(categoryCsv, { header: true, skipEmptyLines: true });
             const categoryRows = (parsed.data as any[]).map(row => ({
-                category: row.category,
-                player_id: row.playerId,
-                year_month: row.yearMonth,
+                category: (row.category || '').trim(),
+                player_id: (row.playerId || '').trim(),
+                year_month: (row.yearMonth || '').trim(),
                 rank: parseInt(row.rank) || 0,
                 created_at: row.createdAt ? new Date(parseInt(row.createdAt)).toISOString() : null,
                 updated_at: row.updatedAt ? new Date(parseInt(row.updatedAt)).toISOString() : null
             })).filter(r => r.player_id && r.category && r.year_month);
 
             onProgress(`Uploading ${categoryRows.length} Category Ranking records...`);
-            const { error } = await supabase.from('category_rankings').insert(categoryRows);
-            if (error && !error.message.includes('duplicate')) throw new Error(`Category Ranking Upload Error: ${error.message}`);
+            const { error } = await supabase.from('category_rankings').upsert(
+                categoryRows,
+                { onConflict: 'player_id, category, year_month' }
+            );
+            if (error) throw new Error(`Category Ranking Upload Error: ${error.message}`);
         }
 
         onProgress('Upload Complete!');

@@ -26,7 +26,8 @@ CREATE TABLE public.player_ranking_history (
     points_raw INTEGER,
     points_value INTEGER,
     created_at TIMESTAMP WITH TIME ZONE,
-    updated_at TIMESTAMP WITH TIME ZONE
+    updated_at TIMESTAMP WITH TIME ZONE,
+    UNIQUE(player_id, year_month) -- Added unique constraint
 );
 
 -- 3. Create category_rankings table
@@ -37,7 +38,8 @@ CREATE TABLE public.category_rankings (
     year_month TEXT NOT NULL,
     rank INTEGER,
     created_at TIMESTAMP WITH TIME ZONE,
-    updated_at TIMESTAMP WITH TIME ZONE
+    updated_at TIMESTAMP WITH TIME ZONE,
+    UNIQUE(player_id, category, year_month) -- Added unique constraint
 );
 
 -- 4. Create user_watched_players table (for dashboard multi-player graphing limit 20)
