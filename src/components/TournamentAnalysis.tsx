@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import {
-    FileText, Search, Loader2, Upload, CheckCircle2,
-    X, ZoomIn, ZoomOut, RefreshCw, AlertCircle, Info
+    FileText, Search, Loader2, Upload,
+    ZoomIn, ZoomOut, RefreshCw, AlertCircle, Info
 } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import { NameNormalizer } from '../utils/NameNormalizer';
@@ -28,7 +28,8 @@ export default function TournamentAnalysis() {
     const [processingStep, setProcessingStep] = useState('');
     const [results, setResults] = useState<MatchResult[]>([]);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-    const [isPdf, setIsPdf] = useState(false);
+    const [debugLogs, setDebugLogs] = useState<string[]>([]);
+    const [showDebug, setShowDebug] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,24 +38,18 @@ export default function TournamentAnalysis() {
 
         setLoading(true);
         setResults([]);
+        setDebugLogs([]);
 
         const isPdfFile = file.type === 'application/pdf';
-        setIsPdf(isPdfFile);
 
-        try {
-            if (isPdfFile) {
-                await processPdf(file);
-            } else if (file.type.startsWith('image/')) {
-                const url = URL.createObjectURL(file);
-                setPreviewUrl(url);
-                await processImage(file);
-            } else {
-                alert('PDFまたは画像ファイルを選択してください。');
-                setLoading(false);
-            }
-        } catch (err) {
-            console.error('Processing error:', err);
-            alert('処理中にエラーが発生しました。');
+        if (isPdfFile) {
+            await processPdf(file);
+        } else if (file.type.startsWith('image/')) {
+            const url = URL.createObjectURL(file);
+            setPreviewUrl(url);
+            await processImage(file);
+        } else {
+            alert('PDFまたは画像ファイルを選択してください。');
             setLoading(false);
         }
     };
@@ -68,14 +63,12 @@ export default function TournamentAnalysis() {
         const allMatchedResults: MatchResult[] = [];
         const pagesToProcess = Math.min(pdf.numPages, 3);
 
-        // For PDF, we'll use a canvas of the first page as the "preview image"
-        // because iframe doesn't allow zoom easily
         let previewSet = false;
 
         for (let i = 1; i <= pagesToProcess; i++) {
             setProcessingStep(`ページ ${i}/${pagesToProcess} を読み取り中...`);
             const page = await pdf.getPage(i);
-            const viewport = page.getViewport({ scale: 2.5 }); // High resolution for OCR
+            const viewport = page.getViewport({ scale: 2.5 });
 
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
@@ -119,19 +112,20 @@ export default function TournamentAnalysis() {
         const { data } = await worker.recognize(canvas);
         const matches: MatchResult[] = [];
         const lines = (data as any).lines || [];
+        const logs: string[] = [];
 
         for (const line of lines) {
             const rawText = line.text.trim();
-            if (rawText.length < 2 || /^[0-9\s\-/,.]+$/.test(rawText)) continue;
+            if (!rawText) continue;
 
-            const normalized = NameNormalizer.normalizeForMatching(rawText);
-            if (!normalized) continue;
+            logs.push(`${Math.round(line.confidence)}%: ${rawText}`);
 
-            // Search for player
-            const playerMatch = await findBestPlayerMatch(normalized);
+            if (rawText.length < 2) continue;
+
+            const playerMatch = await findBestPlayerMatch(rawText);
 
             if (playerMatch) {
-                // Fetch ranking and points for the player's category
+                const normalizedValue = NameNormalizer.normalizeForMatching(rawText);
                 const { data: rankData } = await supabase
                     .from('category_rankings')
                     .select('rank, year_month, category')
@@ -141,7 +135,7 @@ export default function TournamentAnalysis() {
 
                 matches.push({
                     originalText: rawText,
-                    normalizedText: normalized,
+                    normalizedText: normalizedValue,
                     player: playerMatch,
                     rank: rankData?.[0]?.rank || null,
                     points: playerMatch.ranking_point || null,
@@ -151,23 +145,33 @@ export default function TournamentAnalysis() {
             }
         }
 
+        setDebugLogs(prev => [...prev, ...logs]);
         await worker.terminate();
         return matches;
     };
 
-    const findBestPlayerMatch = async (normalized: string): Promise<Player | null> => {
-        // Try exact match or ilike match in DB
-        const { data } = await supabase
-            .from('players')
-            .select('*')
-            .or(`full_name.ilike.%${normalized}%,last_name.ilike.%${normalized}%`)
-            .limit(1);
+    const findBestPlayerMatch = async (rawText: string): Promise<Player | null> => {
+        const cleanText = rawText.replace(/^[0-9.\-\s]+/, '');
+        const terms = cleanText.split(/[\s　,./\\-]+/)
+            .map(t => NameNormalizer.normalizeForMatching(t))
+            .filter(t => t.length >= 2);
 
-        return data?.[0] || null;
+        if (terms.length === 0) return null;
+
+        for (const term of terms) {
+            const { data: player } = await supabase
+                .from('players')
+                .select('*')
+                .or(`full_name.ilike.%${term}%,last_name.ilike.%${term}%`)
+                .limit(1);
+
+            if (player?.[0]) return player[0];
+        }
+
+        return null;
     };
 
     const finalizeResults = (allMatches: MatchResult[]) => {
-        // Deduplicate and filter out low confidence duplicates if any
         const map = new Map();
         allMatches.forEach(m => {
             const id = m.player?.player_id;
@@ -192,16 +196,40 @@ export default function TournamentAnalysis() {
                         トーナメント表を読み取り、対戦相手の最新ランキングとポイントを表示します。
                     </p>
                 </div>
-                {previewUrl && (
+                <div className="flex gap-2">
                     <button
-                        onClick={() => { setPreviewUrl(null); setResults([]); }}
-                        className="flex items-center gap-2 bg-rose-50 text-rose-600 px-4 py-2 rounded-xl border border-rose-100 hover:bg-rose-100 transition-colors"
+                        onClick={() => setShowDebug(!showDebug)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-colors ${showDebug ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-gray-50 text-gray-600 border-gray-200'
+                            }`}
                     >
-                        <RefreshCw size={18} />
-                        リセット
+                        デバッグ表示
                     </button>
-                )}
+                    {previewUrl && (
+                        <button
+                            onClick={() => { setPreviewUrl(null); setResults([]); setDebugLogs([]); }}
+                            className="flex items-center gap-2 bg-rose-50 text-rose-600 px-4 py-2 rounded-xl border border-rose-100 hover:bg-rose-100 transition-colors"
+                        >
+                            <RefreshCw size={18} />
+                            リセット
+                        </button>
+                    )}
+                </div>
             </header>
+
+            {showDebug && debugLogs.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl animate-in slide-in-from-top-4 duration-300">
+                    <h4 className="text-amber-800 font-bold flex items-center gap-2 mb-2">
+                        <Info size={18} /> OCR 抽出テキスト (デバッグ中)
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                        {debugLogs.map((log, i) => (
+                            <div key={i} className="text-[10px] bg-white p-1 rounded border border-amber-100 font-mono truncate" title={log}>
+                                {log}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {!previewUrl ? (
                 <div
@@ -234,17 +262,16 @@ export default function TournamentAnalysis() {
                     />
                 </div>
             ) : (
-                <div className="flex flex-col lg:flex-row gap-8 h-[calc(100vh-250px)] min-h-[600px]">
-                    {/* Preview Side with Zoom */}
+                <div className="flex flex-col lg:flex-row gap-8 h-[calc(100vh-350px)] min-h-[600px]">
                     <div className="lg:w-1/2 flex flex-col bg-white rounded-3xl shadow-lg border border-tennis-green-100 overflow-hidden relative">
                         <div className="p-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/50">
                             <div className="flex items-center gap-3">
                                 <Info size={18} className="text-tennis-green-600" />
-                                <span className="text-sm font-bold text-gray-700">ドロープレビュー (拡大・縮小・ドラッグ可能)</span>
+                                <span className="text-sm font-bold text-gray-700">ドロープレビュー (拡大・縮小可能)</span>
                             </div>
                         </div>
 
-                        <div className="flex-1 bg-gray-900 relative">
+                        <div className="flex-1 bg-gray-900 relative h-full">
                             {loading && (
                                 <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm flex flex-col items-center justify-center z-50">
                                     <Loader2 className="w-16 h-16 text-tennis-green-400 animate-spin mb-4" />
@@ -257,7 +284,7 @@ export default function TournamentAnalysis() {
                                 minScale={0.5}
                                 maxScale={5}
                             >
-                                {({ zoomIn, zoomOut, resetTransform }) => (
+                                {({ zoomIn, zoomOut, resetTransform }: any) => (
                                     <>
                                         <div className="absolute bottom-6 right-6 z-40 flex flex-col gap-2">
                                             <button onClick={() => zoomIn()} className="p-3 bg-white/90 rounded-full shadow-lg hover:bg-white text-gray-700 transition-all"><ZoomIn size={24} /></button>
@@ -279,7 +306,6 @@ export default function TournamentAnalysis() {
                         </div>
                     </div>
 
-                    {/* Results Table Side */}
                     <div className="lg:w-1/2 flex flex-col bg-white rounded-3xl shadow-lg border border-tennis-green-100 overflow-hidden">
                         <div className="p-6 border-b border-gray-50 bg-tennis-green-50/30 flex justify-between items-center">
                             <div>
