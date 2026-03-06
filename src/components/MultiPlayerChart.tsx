@@ -91,11 +91,16 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
 
             if (players) setWatchedPlayers(players as Player[]);
 
-            // 3. Fetch Category Rankings
+            // 3. Fetch Category Rankings (Include Managed Player for matching)
+            const queryIds = [...pIds];
+            if (activeManagedPlayerId && !queryIds.includes(activeManagedPlayerId)) {
+                queryIds.push(activeManagedPlayerId);
+            }
+
             const { data: category } = await supabase
                 .from('category_rankings')
                 .select('*')
-                .in('player_id', pIds)
+                .in('player_id', queryIds)
                 .order('year_month', { ascending: true });
 
             if (category) setCategoryData(category as CategoryRanking[]);
@@ -162,11 +167,13 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
             // Get all categories this managed player has ranking data for
             const { data } = await supabase
                 .from('category_rankings')
-                .select('category')
+                .select('category, year_month')
                 .eq('player_id', activeManagedPlayerId);
 
             if (data && data.length > 0) {
-                const uniqueCats = Array.from(new Set(data.map(d => d.category)));
+                // Sort categories naturally (latest at the end or use month sorting)
+                const sortedRows = [...data].sort((a, b) => a.year_month.localeCompare(b.year_month));
+                const uniqueCats = Array.from(new Set(sortedRows.map(d => d.category)));
                 setManagedCategories(uniqueCats);
             } else {
                 // Fallback to current category if no ranking history
@@ -214,9 +221,9 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                     if (item.category === targetCategory) {
                         shouldInclude = true;
                     }
-                } else if (managedCategories.includes(item.category)) {
-                    // 履歴がない月は、現在のカテゴリーリストに含まれていれば（フォールバック）
-                    const latestManagedCat = managedCategories[0];
+                } else if (managedCategories.length > 0) {
+                    // 履歴がない月は、現在のカテゴリーリストの「最新」を採用（フォールバック）
+                    const latestManagedCat = managedCategories[managedCategories.length - 1];
                     const targetCategory = categoryScope === 'current'
                         ? latestManagedCat
                         : getNextCategory(latestManagedCat);
