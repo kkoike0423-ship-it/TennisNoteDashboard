@@ -261,7 +261,7 @@ function App() {
                   </div>
                   <MultiPlayerChart
                     playerType="managed"
-                    title="管理選手の状況"
+                    title="管理選手"
                     activeManagedPlayerId={activeManagedPlayerId}
                   />
                   <PlayerSearch

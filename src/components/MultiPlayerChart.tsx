@@ -210,7 +210,7 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                 <div>
                     <h3 className="text-lg font-bold text-gray-800 flex items-center">
                         <TrendingUp className="mr-2 h-5 w-5 text-tennis-green-600" />
-                        {title} ({watchedPlayers.length}/10)
+                        {title} {playerType === 'opponent' && `(${watchedPlayers.length}/10)`}
                     </h3>
                 </div>
 
