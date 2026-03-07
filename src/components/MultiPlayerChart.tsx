@@ -239,7 +239,7 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                 {chartDataCategory.length > 0 && (
                     <ResponsiveContainer width="100%" height="100%">
                         {/* Note: reversed Y-axis is standard for Ranks (1 is highest) */}
-                        <LineChart data={chartDataCategory} margin={{ top: 5, right: 70, left: 20, bottom: 5 }}>
+                        <LineChart data={chartDataCategory} margin={{ top: 5, right: 140, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
                             <XAxis
                                 dataKey="label"
@@ -292,17 +292,31 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                                                 const fullName = player.full_name || player.last_name || "";
                                                 const surname = fullName.split(' ')[0] || fullName.split('　')[0] || fullName;
 
+                                                // Get the player's current points
+                                                const points = player.ranking_point || 0;
+
                                                 return (
-                                                    <text
-                                                        x={x + 10}
-                                                        y={y + 4}
-                                                        fill={baseColor}
-                                                        fontSize={12}
-                                                        fontWeight="bold"
-                                                        className="drop-shadow-sm"
-                                                    >
-                                                        {surname}
-                                                    </text>
+                                                    <g>
+                                                        <text
+                                                            x={x + 10}
+                                                            y={y - 6}
+                                                            fill={baseColor}
+                                                            fontSize={12}
+                                                            fontWeight="bold"
+                                                            className="drop-shadow-sm"
+                                                        >
+                                                            {surname}
+                                                        </text>
+                                                        <text
+                                                            x={x + 10}
+                                                            y={y + 8}
+                                                            fill="#6b7280"
+                                                            fontSize={10}
+                                                            fontWeight="normal"
+                                                        >
+                                                            {value}位 / {points.toLocaleString()}pt
+                                                        </text>
+                                                    </g>
                                                 );
                                             }}
                                         />

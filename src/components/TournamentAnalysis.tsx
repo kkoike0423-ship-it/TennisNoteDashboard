@@ -320,24 +320,13 @@ export default function TournamentAnalysis() {
 
     const findBestPlayerMatch = async (rawText: string): Promise<{ player: Player; cleanedName: string } | null> => {
         // Japanese name pattern: Kanji, Hiragana, Katakana blocks
-        // We look for blocks of at least 2 Japanese characters
         const jpNameRegex = /[\u4e00-\u9faf\u3040-\u309f\u30a0-\u30ff]{2,}/g;
         const jpMatches = rawText.match(jpNameRegex);
 
         if (!jpMatches || jpMatches.length === 0) return null;
 
-        // Try single blocks first
-        for (const term of jpMatches) {
-            const { data: players } = await supabase
-                .from('players')
-                .select('*')
-                .or(`full_name.ilike.%${term}%,last_name.ilike.%${term}%`)
-                .limit(1);
-
-            if (players?.[0]) return { player: players[0], cleanedName: term };
-        }
-
-        // Try joining adjacent blocks (surname + given name)
+        // --- STEP 1: Try joining adjacent blocks (surname + given name) FIRST ---
+        // This ensures "Surname + Given Name" is captured even if there's a space or separator.
         if (jpMatches.length >= 2) {
             for (let i = 0; i < jpMatches.length - 1; i++) {
                 const combined = jpMatches[i] + jpMatches[i + 1];
@@ -349,6 +338,17 @@ export default function TournamentAnalysis() {
 
                 if (players?.[0]) return { player: players[0], cleanedName: combined };
             }
+        }
+
+        // --- STEP 2: Fallback to single blocks only if NO combinations matched ---
+        for (const term of jpMatches) {
+            const { data: players } = await supabase
+                .from('players')
+                .select('*')
+                .or(`full_name.ilike.%${term}%,last_name.ilike.%${term}%`)
+                .limit(1);
+
+            if (players?.[0]) return { player: players[0], cleanedName: term };
         }
 
         return null;
