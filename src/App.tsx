@@ -157,21 +157,19 @@ function App() {
             分析ダッシュボード
           </button>
 
-          {session?.user?.email === 'kkoike0423@gmail.com' && (
-            <button
-              onClick={() => {
-                setActiveMenu('tournament');
-                setIsSidebarOpen(false);
-              }}
-              className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'tournament'
-                ? 'bg-tennis-green-50 text-tennis-green-700'
-                : 'text-gray-600 hover:bg-tennis-green-50 hover:text-tennis-green-700'
-                }`}
-            >
-              <Search className="w-5 h-5 mr-3" />
-              トーナメント分析
-            </button>
-          )}
+          <button
+            onClick={() => {
+              setActiveMenu('tournament');
+              setIsSidebarOpen(false);
+            }}
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'tournament'
+              ? 'bg-tennis-green-50 text-tennis-green-700'
+              : 'text-gray-600 hover:bg-tennis-green-50 hover:text-tennis-green-700'
+              }`}
+          >
+            <Search className="w-5 h-5 mr-3" />
+            トーナメント分析
+          </button>
 
           {session?.user?.email === 'kkoike0423@gmail.com' && (
             <button
