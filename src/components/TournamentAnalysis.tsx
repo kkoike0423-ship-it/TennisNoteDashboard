@@ -439,7 +439,7 @@ export default function TournamentAnalysis() {
                 </div>
             ) : (
                 <div className="flex flex-col lg:flex-row gap-8 h-[calc(100vh-350px)] min-h-[600px]">
-                    <div className="lg:w-1/2 flex flex-col bg-white rounded-3xl shadow-lg border border-tennis-green-100 overflow-hidden relative">
+                    <div className="lg:w-1/4 flex flex-col bg-white rounded-3xl shadow-lg border border-tennis-green-100 overflow-hidden relative">
                         <div className="p-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/50">
                             <div className="flex items-center gap-3">
                                 <Info size={18} className="text-tennis-green-600" />
@@ -482,7 +482,7 @@ export default function TournamentAnalysis() {
                         </div>
                     </div>
 
-                    <div className="lg:w-1/2 flex flex-col bg-white rounded-3xl shadow-lg border border-tennis-green-100 overflow-hidden">
+                    <div className="lg:w-3/4 flex flex-col bg-white rounded-3xl shadow-lg border border-tennis-green-100 overflow-hidden">
                         <div className="p-6 border-b border-gray-50 bg-tennis-green-50/30 flex justify-between items-center">
                             <div>
                                 <h3 className="text-xl font-bold text-gray-800">認識された選手一覧</h3>
