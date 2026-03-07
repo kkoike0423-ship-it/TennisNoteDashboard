@@ -318,15 +318,19 @@ export default function TournamentAnalysis() {
     };
 
     const findBestPlayerMatch = async (rawText: string): Promise<Player | null> => {
-        const cleanText = rawText.replace(/^[0-9.\-\s]+/, '');
-        const terms = cleanText.split(/[\s　,./\\-]+/)
-            .map(t => NameNormalizer.normalizeForMatching(t))
-            .filter(t => t.length >= 2);
+        // Japanese name pattern: Kanji, Hiragana, Katakana blocks
+        // We look for blocks of at least 2 Japanese characters
+        const jpNameRegex = /[\u4e00-\u9faf\u3040-\u309f\u30a0-\u30ff]{2,}/g;
+        const jpMatches = rawText.match(jpNameRegex);
 
-        if (terms.length === 0) return null;
+        if (!jpMatches) {
+            addLog(`[スキップ] 日本語の名前（2文字以上）が見つかりません: "${rawText}"`);
+            return null;
+        }
 
-        for (const term of terms) {
-            // Priority search: names in the players table
+        // Try matching each Japanese block found (starting from the one most likely to be a name)
+        for (const term of jpMatches) {
+            // First, try an exact match or highly similar match in the players table
             const { data: players } = await supabase
                 .from('players')
                 .select('*')
