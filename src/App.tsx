@@ -6,12 +6,13 @@ import DashboardOverview from './components/DashboardOverview';
 import PlayerSearch from './components/PlayerSearch';
 import MultiPlayerChart from './components/MultiPlayerChart';
 import TournamentAnalysis from './components/TournamentAnalysis';
-import { Trash2, Users, UserCheck, Menu, X, LogOut, Upload, BarChart3, Search } from 'lucide-react';
+import DataManagement from './components/DataManagement';
+import { Trash2, Users, UserCheck, Menu, X, LogOut, Upload, BarChart3, Search, Database } from 'lucide-react';
 import type { Player } from './types/database';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
-  const [activeMenu, setActiveMenu] = useState<'overview' | 'import' | 'tournament'>('overview');
+  const [activeMenu, setActiveMenu] = useState<'overview' | 'import' | 'tournament' | 'data'>('overview');
   const [managedPlayers, setManagedPlayers] = useState<Player[]>([]);
   const [activeManagedPlayerId, setActiveManagedPlayerId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -175,6 +176,22 @@ function App() {
           {session?.user?.email === 'kkoike0423@gmail.com' && (
             <button
               onClick={() => {
+                setActiveMenu('data');
+                setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'data'
+                ? 'bg-tennis-green-50 text-tennis-green-700'
+                : 'text-gray-600 hover:bg-tennis-green-50 hover:text-tennis-green-700'
+                }`}
+            >
+              <Database className="w-5 h-5 mr-3" />
+              データ管理
+            </button>
+          )}
+
+          {session?.user?.email === 'kkoike0423@gmail.com' && (
+            <button
+              onClick={() => {
                 setActiveMenu('import');
                 setIsSidebarOpen(false);
               }}
@@ -220,7 +237,8 @@ function App() {
             </button>
             <h2 className="text-lg lg:text-xl font-semibold text-gray-800 truncate">
               {activeMenu === 'overview' ? '分析ダッシュボード' :
-                activeMenu === 'tournament' ? 'トーナメント分析' : 'CSVデータ取込'}
+                activeMenu === 'tournament' ? 'トーナメント分析' :
+                  activeMenu === 'data' ? 'データ管理' : 'CSVデータ取込'}
             </h2>
           </div>
           <div className="flex items-center gap-4">
@@ -234,6 +252,7 @@ function App() {
           <div className="max-w-6xl mx-auto space-y-6">
             {activeMenu === 'import' && <DashboardOverview />}
             {activeMenu === 'tournament' && <TournamentAnalysis />}
+            {activeMenu === 'data' && <DataManagement />}
 
             {activeMenu === 'overview' && (
               <div className="space-y-12">
