@@ -325,6 +325,11 @@ function App() {
                       </h2>
                     </div>
                     <div className="space-y-8">
+                      <MultiPlayerChart
+                        playerType="opponent"
+                        title="対戦相手の推移比較"
+                        activeManagedPlayerId={activeManagedPlayerId}
+                      />
                       <PlayerSearch
                         playerType="opponent"
                         title={`「${managedPlayers.find(p => p.player_id === activeManagedPlayerId)?.last_name}」の対戦相手を検索・登録・削除`}
