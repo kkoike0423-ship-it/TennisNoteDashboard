@@ -14,6 +14,7 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
     const [results, setResults] = useState<Player[]>([]);
     const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set());
     const [watchedPlayersList, setWatchedPlayersList] = useState<Player[]>([]);
+    const [ranks, setRanks] = useState<Record<string, number | null>>({});
     const [loading, setLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -32,6 +33,8 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
             if (playerType === 'opponent') {
                 if (!activeManagedPlayerId) {
                     setWatchedIds(new Set());
+                    setWatchedPlayersList([]);
+                    setRanks({});
                     return;
                 }
                 dbQuery = dbQuery.eq('target_managed_player_id', activeManagedPlayerId);
@@ -49,13 +52,38 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                         .from('players')
                         .select('*')
                         .in('player_id', ids);
-                    if (details) setWatchedPlayersList(details as Player[]);
+
+                    if (details) {
+                        const playersDetail = details as Player[];
+                        setWatchedPlayersList(playersDetail);
+
+                        // Fetch latest ranks for these players in their primary categories
+                        const ranksMap: Record<string, number | null> = {};
+                        for (const p of playersDetail) {
+                            const { data: rData } = await supabase
+                                .from('category_rankings')
+                                .select('rank')
+                                .eq('player_id', p.player_id)
+                                .eq('category', p.category)
+                                .order('year_month', { ascending: false })
+                                .limit(1);
+
+                            if (rData?.[0]) {
+                                ranksMap[p.player_id] = rData[0].rank;
+                            } else {
+                                ranksMap[p.player_id] = null;
+                            }
+                        }
+                        setRanks(ranksMap);
+                    }
                 } else {
                     setWatchedPlayersList([]);
+                    setRanks({});
                 }
             } else {
                 setWatchedPlayersList([]);
                 setWatchedIds(new Set());
+                setRanks({});
             }
         };
         fetchWatched();
@@ -161,9 +189,26 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                 setWatchedIds(new Set(ids));
                 if (ids.length > 0) {
                     const { data: details } = await supabase.from('players').select('*').in('player_id', ids);
-                    if (details) setWatchedPlayersList(details as Player[]);
+                    if (details) {
+                        const playersDetail = details as Player[];
+                        setWatchedPlayersList(playersDetail);
+
+                        const ranksMap: Record<string, number | null> = {};
+                        for (const p of playersDetail) {
+                            const { data: rData } = await supabase
+                                .from('category_rankings')
+                                .select('rank')
+                                .eq('player_id', p.player_id)
+                                .eq('category', p.category)
+                                .order('year_month', { ascending: false })
+                                .limit(1);
+                            ranksMap[p.player_id] = rData?.[0]?.rank ?? null;
+                        }
+                        setRanks(ranksMap);
+                    }
                 } else {
                     setWatchedPlayersList([]);
+                    setRanks({});
                 }
             }
         }
@@ -199,13 +244,18 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                                     <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-700">
                                         <User size={20} />
                                     </div>
-                                    <div>
+                                    <div className="flex-1">
                                         <p className="font-semibold text-gray-800">{player.full_name || `${player.last_name} ${player.first_name}`}</p>
-                                        <div className="flex gap-3 text-xs text-gray-500">
+                                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 mt-0.5">
+                                            <span className="font-bold text-tennis-green-600">
+                                                {ranks[player.player_id] ? `${ranks[player.player_id]}位` : '-位'}
+                                                <span className="text-gray-400 font-normal ml-1">({player.ranking_point.toLocaleString()}pt)</span>
+                                            </span>
+                                            <span className="text-gray-300">|</span>
                                             <span>{player.team || 'チームなし'}</span>
-                                            <span>•</span>
+                                            <span className="text-gray-300">•</span>
                                             <span>{player.category}</span>
-                                            <span>•</span>
+                                            <span className="text-gray-300">•</span>
                                             <span className="font-mono text-gray-400">{player.player_id}</span>
                                         </div>
                                     </div>
@@ -239,13 +289,17 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                                     <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-700">
                                         <User size={20} />
                                     </div>
-                                    <div>
+                                    <div className="flex-1">
                                         <p className="font-semibold text-gray-800 text-base">{player.full_name || `${player.last_name} ${player.first_name}`}</p>
-                                        <div className="flex gap-3 text-xs">
+                                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 mt-0.5">
+                                            <span className="font-bold text-tennis-green-600">
+                                                {player.ranking_point.toLocaleString()}pt
+                                            </span>
+                                            <span className="text-gray-300">|</span>
                                             <span>{player.team || 'チームなし'}</span>
-                                            <span>•</span>
+                                            <span className="text-gray-300">•</span>
                                             <span>{player.category}</span>
-                                            <span>•</span>
+                                            <span className="text-gray-300">•</span>
                                             <span className="font-mono text-gray-400">{player.player_id}</span>
                                         </div>
                                     </div>
