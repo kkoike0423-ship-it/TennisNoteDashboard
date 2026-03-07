@@ -318,45 +318,58 @@ export default function TournamentAnalysis() {
         }
     };
 
+    /**
+     * Finds the best player match in the database for a given raw OCR text.
+     * Uses a fuzzy wildcard approach to handle spaces and minor OCR errors.
+     */
     const findBestPlayerMatch = async (rawText: string): Promise<{ player: Player; cleanedName: string } | null> => {
-        // Japanese name pattern: Kanji, Hiragana, Katakana blocks (1+ chars)
+        // Extract Japanese character blocks (Kanji, Hiragana, Katakana)
         const jpNameRegex = /[\u4e00-\u9faf\u3040-\u309f\u30a0-\u30ff]+/g;
-        const jpMatches = rawText.match(jpNameRegex);
+        const jpMatches = rawText.match(jpNameRegex) || [];
 
-        if (!jpMatches || jpMatches.length === 0) return null;
+        if (jpMatches.length === 0) return null;
 
-        // --- STEP 1: Try joining adjacent blocks (surname + given name) FIRST ---
-        // This ensures "Surname + Given Name" is captured even if there's a space or separator.
-        if (jpMatches.length >= 2) {
-            for (let i = 0; i < jpMatches.length - 1; i++) {
-                const term1 = jpMatches[i];
-                const term2 = jpMatches[i + 1];
-                const combined = term1 + term2;
+        /**
+         * Helper to search with wildcards between characters
+         * e.g., "太田晴" -> "%太%田%晴%"
+         */
+        const fuzzySearch = async (term: string) => {
+            if (term.length < 2) return null;
+            const fuzzyTerm = `%${term.split('').join('%')}%`;
 
-                // Search for both terms in full_name (handles spaces like "Surname GivenName")
-                const { data: players } = await supabase
-                    .from('players')
-                    .select('*')
-                    .ilike('full_name', `%${term1}%`)
-                    .ilike('full_name', `%${term2}%`)
-                    .limit(1);
+            const { data } = await supabase
+                .from('players')
+                .select('*')
+                .ilike('full_name', fuzzyTerm)
+                .limit(1);
 
-                if (players?.[0]) return { player: players[0], cleanedName: combined };
+            return data?.[0] || null;
+        };
+
+        // --- STEP 1: Try joining adjacent blocks (Full Name Priority) ---
+        // Try joining 3 blocks first, then 2 blocks
+        if (jpMatches.length >= 3) {
+            for (let i = 0; i < jpMatches.length - 2; i++) {
+                const combined = jpMatches[i] + jpMatches[i + 1] + jpMatches[i + 2];
+                const player = await fuzzySearch(combined);
+                if (player) return { player, cleanedName: combined };
             }
         }
 
-        // --- STEP 2: Fallback to single blocks only if NO combinations matched ---
-        for (const term of jpMatches) {
-            // Only search single blocks that are 2+ characters to avoid noise
-            if (term.length < 2) continue;
+        if (jpMatches.length >= 2) {
+            for (let i = 0; i < jpMatches.length - 1; i++) {
+                const combined = jpMatches[i] + jpMatches[i + 1];
+                const player = await fuzzySearch(combined);
+                if (player) return { player, cleanedName: combined };
+            }
+        }
 
-            const { data: players } = await supabase
-                .from('players')
-                .select('*')
-                .or(`full_name.ilike.%${term}%,last_name.ilike.%${term}%`)
-                .limit(1);
-
-            if (players?.[0]) return { player: players[0], cleanedName: term };
+        // --- STEP 2: Try single blocks (Fallback) ---
+        // Sort by length decending to pick the most descriptive block first
+        const sortedTerms = [...jpMatches].sort((a, b) => b.length - a.length);
+        for (const term of sortedTerms) {
+            const player = await fuzzySearch(term);
+            if (player) return { player, cleanedName: term };
         }
 
         return null;
