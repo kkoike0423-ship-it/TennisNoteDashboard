@@ -319,8 +319,8 @@ export default function TournamentAnalysis() {
     };
 
     const findBestPlayerMatch = async (rawText: string): Promise<{ player: Player; cleanedName: string } | null> => {
-        // Japanese name pattern: Kanji, Hiragana, Katakana blocks
-        const jpNameRegex = /[\u4e00-\u9faf\u3040-\u309f\u30a0-\u30ff]{2,}/g;
+        // Japanese name pattern: Kanji, Hiragana, Katakana blocks (1+ chars)
+        const jpNameRegex = /[\u4e00-\u9faf\u3040-\u309f\u30a0-\u30ff]+/g;
         const jpMatches = rawText.match(jpNameRegex);
 
         if (!jpMatches || jpMatches.length === 0) return null;
@@ -329,11 +329,16 @@ export default function TournamentAnalysis() {
         // This ensures "Surname + Given Name" is captured even if there's a space or separator.
         if (jpMatches.length >= 2) {
             for (let i = 0; i < jpMatches.length - 1; i++) {
-                const combined = jpMatches[i] + jpMatches[i + 1];
+                const term1 = jpMatches[i];
+                const term2 = jpMatches[i + 1];
+                const combined = term1 + term2;
+
+                // Search for both terms in full_name (handles spaces like "Surname GivenName")
                 const { data: players } = await supabase
                     .from('players')
                     .select('*')
-                    .or(`full_name.ilike.%${combined}%,last_name.ilike.%${combined}%`)
+                    .ilike('full_name', `%${term1}%`)
+                    .ilike('full_name', `%${term2}%`)
                     .limit(1);
 
                 if (players?.[0]) return { player: players[0], cleanedName: combined };
@@ -342,6 +347,9 @@ export default function TournamentAnalysis() {
 
         // --- STEP 2: Fallback to single blocks only if NO combinations matched ---
         for (const term of jpMatches) {
+            // Only search single blocks that are 2+ characters to avoid noise
+            if (term.length < 2) continue;
+
             const { data: players } = await supabase
                 .from('players')
                 .select('*')
