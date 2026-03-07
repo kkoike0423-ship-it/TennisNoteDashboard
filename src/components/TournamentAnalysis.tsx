@@ -32,6 +32,11 @@ export default function TournamentAnalysis() {
     const [showDebug, setShowDebug] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const addLog = (message: string) => {
+        setDebugLogs(prev => [`[${new Date().toLocaleTimeString()}] ${message}`, ...prev]);
+        console.log(`[OCR Log] ${message}`);
+    };
+
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -39,115 +44,157 @@ export default function TournamentAnalysis() {
         setLoading(true);
         setResults([]);
         setDebugLogs([]);
+        addLog(`ファイルを選択しました: ${file.name} (${file.type})`);
 
         const isPdfFile = file.type === 'application/pdf';
 
-        if (isPdfFile) {
-            await processPdf(file);
-        } else if (file.type.startsWith('image/')) {
-            const url = URL.createObjectURL(file);
-            setPreviewUrl(url);
-            await processImage(file);
-        } else {
-            alert('PDFまたは画像ファイルを選択してください。');
+        try {
+            if (isPdfFile) {
+                await processPdf(file);
+            } else if (file.type.startsWith('image/')) {
+                const url = URL.createObjectURL(file);
+                setPreviewUrl(url);
+                await processImage(file);
+            } else {
+                alert('PDFまたは画像ファイルを選択してください。');
+                setLoading(false);
+            }
+        } catch (err: any) {
+            addLog(`致命的なエラー: ${err.message}`);
+            console.error(err);
             setLoading(false);
         }
     };
 
     const processPdf = async (file: File) => {
         setProcessingStep('PDFを解析中...');
-        const arrayBuffer = await file.arrayBuffer();
-        const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
-        const pdf = await loadingTask.promise;
+        addLog('PDFの解析を開始します...');
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+            const pdf = await loadingTask.promise;
 
-        const allMatchedResults: MatchResult[] = [];
-        const pagesToProcess = Math.min(pdf.numPages, 3);
+            addLog(`PDF読み込み完了: ${pdf.numPages} ページ`);
+            const allMatchedResults: MatchResult[] = [];
+            const pagesToProcess = Math.min(pdf.numPages, 3);
 
-        let previewSet = false;
+            let previewSet = false;
 
-        for (let i = 1; i <= pagesToProcess; i++) {
-            setProcessingStep(`ページ ${i}/${pagesToProcess} を読み取り中...`);
-            const page = await pdf.getPage(i);
-            const viewport = page.getViewport({ scale: 2.5 });
+            for (let i = 1; i <= pagesToProcess; i++) {
+                addLog(`第 ${i} ページのレンダリング中...`);
+                setProcessingStep(`ページ ${i}/${pagesToProcess} を読み取り中...`);
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: 2.5 });
 
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
 
-            if (context) {
-                await (page as any).render({ canvasContext: context, viewport, canvas }).promise;
+                if (context) {
+                    await (page as any).render({ canvasContext: context, viewport, canvas }).promise;
 
-                if (!previewSet) {
-                    setPreviewUrl(canvas.toDataURL());
-                    previewSet = true;
+                    if (!previewSet) {
+                        setPreviewUrl(canvas.toDataURL());
+                        previewSet = true;
+                    }
+
+                    addLog(`第 ${i} ページのOCRを開始します...`);
+                    const pageResults = await performOcr(canvas);
+                    allMatchedResults.push(...pageResults);
                 }
-
-                const pageResults = await performOcr(canvas);
-                allMatchedResults.push(...pageResults);
             }
-        }
 
-        finalizeResults(allMatchedResults);
+            finalizeResults(allMatchedResults);
+        } catch (err: any) {
+            addLog(`PDF処理エラー: ${err.message}`);
+            throw err;
+        }
     };
 
     const processImage = async (file: File) => {
         setProcessingStep('画像を解析中...');
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
-        await new Promise((resolve) => { img.onload = resolve; });
+        addLog('画像の解析を開始します...');
+        try {
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = () => reject(new Error('画像の読み込みに失敗しました'));
+            });
 
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0);
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0);
 
-        const pageResults = await performOcr(canvas);
-        finalizeResults(pageResults);
+            addLog('画像OCRを開始します...');
+            const pageResults = await performOcr(canvas);
+            finalizeResults(pageResults);
+        } catch (err: any) {
+            addLog(`画像処理エラー: ${err.message}`);
+            throw err;
+        }
     };
 
     const performOcr = async (canvas: HTMLCanvasElement): Promise<MatchResult[]> => {
-        const worker = await createWorker('jpn');
-        const { data } = await worker.recognize(canvas);
-        const matches: MatchResult[] = [];
-        const lines = (data as any).lines || [];
-        const logs: string[] = [];
+        let worker;
+        try {
+            addLog('Tesseract Workerを初期化中(jpn)...');
+            worker = await createWorker('jpn');
 
-        for (const line of lines) {
-            const rawText = line.text.trim();
-            if (!rawText) continue;
+            addLog('文字認識を実行中...');
+            const { data } = await worker.recognize(canvas);
+            const matches: MatchResult[] = [];
+            const lines = (data as any).lines || [];
 
-            logs.push(`${Math.round(line.confidence)}%: ${rawText}`);
+            addLog(`${lines.length} 行のテキストを抽出しました。照合を開始します...`);
 
-            if (rawText.length < 2) continue;
+            for (const line of lines) {
+                const rawText = line.text.trim();
+                if (!rawText) continue;
 
-            const playerMatch = await findBestPlayerMatch(rawText);
+                if (rawText.length < 2) {
+                    // Too short, but log it anyway if it looks like something
+                    if (rawText.length > 0) addLog(`[SKIPPED] ${rawText}`);
+                    continue;
+                }
 
-            if (playerMatch) {
-                const normalizedValue = NameNormalizer.normalizeForMatching(rawText);
-                const { data: rankData } = await supabase
-                    .from('category_rankings')
-                    .select('rank, year_month, category')
-                    .eq('player_id', playerMatch.player_id)
-                    .order('year_month', { ascending: false })
-                    .limit(1);
+                const playerMatch = await findBestPlayerMatch(rawText);
 
-                matches.push({
-                    originalText: rawText,
-                    normalizedText: normalizedValue,
-                    player: playerMatch,
-                    rank: rankData?.[0]?.rank || null,
-                    points: playerMatch.ranking_point || null,
-                    category: rankData?.[0]?.category || playerMatch.category || null,
-                    confidence: line.confidence
-                });
+                if (playerMatch) {
+                    addLog(`[MATCHED] "${rawText}" -> ${playerMatch.full_name}`);
+                    const normalizedValue = NameNormalizer.normalizeForMatching(rawText);
+                    const { data: rankData } = await supabase
+                        .from('category_rankings')
+                        .select('rank, year_month, category')
+                        .eq('player_id', playerMatch.player_id)
+                        .order('year_month', { ascending: false })
+                        .limit(1);
+
+                    matches.push({
+                        originalText: rawText,
+                        normalizedText: normalizedValue,
+                        player: playerMatch,
+                        rank: rankData?.[0]?.rank || null,
+                        points: playerMatch.ranking_point || null,
+                        category: rankData?.[0]?.category || playerMatch.category || null,
+                        confidence: line.confidence
+                    });
+                } else {
+                    addLog(`[NO MATCH] "${rawText}"`);
+                }
             }
-        }
 
-        setDebugLogs(prev => [...prev, ...logs]);
-        await worker.terminate();
-        return matches;
+            await worker.terminate();
+            addLog('OCR処理が完了しました。');
+            return matches;
+        } catch (err: any) {
+            addLog(`OCRエラー: ${err.message}`);
+            if (worker) await worker.terminate();
+            return [];
+        }
     };
 
     const findBestPlayerMatch = async (rawText: string): Promise<Player | null> => {
@@ -172,6 +219,7 @@ export default function TournamentAnalysis() {
     };
 
     const finalizeResults = (allMatches: MatchResult[]) => {
+        addLog(`最終結果を整理中 (${allMatches.length} 件のヒット)...`);
         const map = new Map();
         allMatches.forEach(m => {
             const id = m.player?.player_id;
@@ -182,6 +230,7 @@ export default function TournamentAnalysis() {
         setResults(Array.from(map.values()));
         setLoading(false);
         setProcessingStep('');
+        addLog('すべての処理が完了しました。');
     };
 
     return (
@@ -216,18 +265,24 @@ export default function TournamentAnalysis() {
                 </div>
             </header>
 
-            {showDebug && debugLogs.length > 0 && (
+            {showDebug && (
                 <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl animate-in slide-in-from-top-4 duration-300">
                     <h4 className="text-amber-800 font-bold flex items-center gap-2 mb-2">
-                        <Info size={18} /> OCR 抽出テキスト (デバッグ中)
+                        <Info size={18} /> OCR 実行ログ (最新順)
                     </h4>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                        {debugLogs.map((log, i) => (
-                            <div key={i} className="text-[10px] bg-white p-1 rounded border border-amber-100 font-mono truncate" title={log}>
-                                {log}
-                            </div>
-                        ))}
-                    </div>
+                    {debugLogs.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                            {debugLogs.map((log, i) => (
+                                <div key={i} className="text-[10px] bg-white p-2 rounded border border-amber-100 font-mono break-all leading-relaxed" title={log}>
+                                    {log}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-4 text-amber-600/60 text-sm italic">
+                            ログはありません。ファイルをアップロードすると解析プロセスが表示されます。
+                        </div>
+                    )}
                 </div>
             )}
 
