@@ -32,6 +32,7 @@ export default function TournamentAnalysis() {
     const [showDebug, setShowDebug] = useState(false);
     const [categories, setCategories] = useState<string[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>('');
+    const [latestYearMonth, setLatestYearMonth] = useState<string>('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Fetch categories and set initial one based on managed players
@@ -73,6 +74,24 @@ export default function TournamentAnalysis() {
         };
         initCategories();
     }, []);
+
+    // Get the latest year_month for the selected category whenever it changes
+    useEffect(() => {
+        if (!selectedCategory) return;
+        const fetchLatestYM = async () => {
+            const { data } = await supabase
+                .from('category_rankings')
+                .select('year_month')
+                .eq('category', selectedCategory)
+                .order('year_month', { ascending: false })
+                .limit(1);
+            if (data?.[0]) {
+                setLatestYearMonth(data[0].year_month);
+                addLog(`カテゴリー "${selectedCategory}" の最新データ年月: ${data[0].year_month}`);
+            }
+        };
+        fetchLatestYM();
+    }, [selectedCategory]);
 
     const calculateMatchRate = (str1: string, str2: string): number => {
         const s1 = NameNormalizer.normalizeForMatching(str1);
@@ -256,10 +275,21 @@ export default function TournamentAnalysis() {
                 if (playerMatch) {
                     addLog(`[一致確認] "${rawText}" → ${playerMatch.full_name}`);
                     const normalizedValue = NameNormalizer.normalizeForMatching(rawText);
-                    const { data: rankData } = await supabase
+
+                    // Search category_rankings with category and latest year_month
+                    let rankQuery = supabase
                         .from('category_rankings')
                         .select('rank, year_month, category')
-                        .eq('player_id', playerMatch.player_id)
+                        .eq('player_id', playerMatch.player_id);
+
+                    if (selectedCategory) {
+                        rankQuery = rankQuery.eq('category', selectedCategory);
+                        if (latestYearMonth) {
+                            rankQuery = rankQuery.eq('year_month', latestYearMonth);
+                        }
+                    }
+
+                    const { data: rankData } = await rankQuery
                         .order('year_month', { ascending: false })
                         .limit(1);
 
@@ -296,16 +326,12 @@ export default function TournamentAnalysis() {
         if (terms.length === 0) return null;
 
         for (const term of terms) {
-            let query = supabase
+            // Priority search: names in the players table
+            const { data: players } = await supabase
                 .from('players')
                 .select('*')
-                .or(`full_name.ilike.%${term}%,last_name.ilike.%${term}%`);
-
-            if (selectedCategory) {
-                query = query.eq('category', selectedCategory);
-            }
-
-            const { data: players } = await query.limit(1);
+                .or(`full_name.ilike.%${term}%,last_name.ilike.%${term}%`)
+                .limit(1);
 
             if (players?.[0]) return players[0];
         }
