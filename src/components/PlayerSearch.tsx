@@ -245,18 +245,19 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                                         <User size={20} />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="font-semibold text-gray-800">{player.full_name || `${player.last_name} ${player.first_name}`}</p>
-                                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 mt-0.5">
-                                            <span className="font-bold text-tennis-green-600">
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-semibold text-gray-800">{player.full_name || `${player.last_name} ${player.first_name}`}</p>
+                                            <span className="text-[10px] font-bold text-tennis-green-600 bg-tennis-green-50 px-2 py-0.5 rounded-full border border-tennis-green-100">
                                                 {ranks[player.player_id] ? `${ranks[player.player_id]}位` : '-位'}
-                                                <span className="text-gray-400 font-normal ml-1">({player.ranking_point.toLocaleString()}pt)</span>
+                                                <span className="text-tennis-green-400 font-normal ml-1">({player.ranking_point.toLocaleString()}pt)</span>
                                             </span>
-                                            <span className="text-gray-300">|</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-gray-400 mt-1">
                                             <span>{player.team || 'チームなし'}</span>
-                                            <span className="text-gray-300">•</span>
+                                            <span className="text-gray-200">•</span>
                                             <span>{player.category}</span>
-                                            <span className="text-gray-300">•</span>
-                                            <span className="font-mono text-gray-400">{player.player_id}</span>
+                                            <span className="text-gray-200">•</span>
+                                            <span className="font-mono">{player.player_id}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -290,17 +291,18 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                                         <User size={20} />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="font-semibold text-gray-800 text-base">{player.full_name || `${player.last_name} ${player.first_name}`}</p>
-                                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 mt-0.5">
-                                            <span className="font-bold text-tennis-green-600">
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-semibold text-gray-800 text-base">{player.full_name || `${player.last_name} ${player.first_name}`}</p>
+                                            <span className="text-[10px] font-bold text-tennis-green-600 bg-tennis-green-50 px-2 py-0.5 rounded-full border border-tennis-green-100">
                                                 {player.ranking_point.toLocaleString()}pt
                                             </span>
-                                            <span className="text-gray-300">|</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-gray-400 mt-1">
                                             <span>{player.team || 'チームなし'}</span>
-                                            <span className="text-gray-300">•</span>
+                                            <span className="text-gray-200">•</span>
                                             <span>{player.category}</span>
-                                            <span className="text-gray-300">•</span>
-                                            <span className="font-mono text-gray-400">{player.player_id}</span>
+                                            <span className="text-gray-200">•</span>
+                                            <span className="font-mono">{player.player_id}</span>
                                         </div>
                                     </div>
                                 </div>

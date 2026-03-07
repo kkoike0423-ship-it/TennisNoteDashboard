@@ -333,27 +333,19 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                                                 const points = player.ranking_point || 0;
 
                                                 return (
-                                                    <g>
-                                                        <text
-                                                            x={x + 10}
-                                                            y={y - 6}
-                                                            fill={baseColor}
-                                                            fontSize={12}
-                                                            fontWeight="bold"
-                                                            className="drop-shadow-sm"
-                                                        >
-                                                            {surname}
-                                                        </text>
-                                                        <text
-                                                            x={x + 10}
-                                                            y={y + 8}
-                                                            fill="#6b7280"
-                                                            fontSize={10}
-                                                            fontWeight="normal"
-                                                        >
+                                                    <text
+                                                        x={x + 10}
+                                                        y={y + 4}
+                                                        fill={baseColor}
+                                                        fontSize={12}
+                                                        fontWeight="bold"
+                                                        className="drop-shadow-sm"
+                                                    >
+                                                        {surname}
+                                                        <tspan dx={6} fill="#6b7280" fontSize={10} fontWeight="normal">
                                                             {value}位 / {points.toLocaleString()}pt
-                                                        </text>
-                                                    </g>
+                                                        </tspan>
+                                                    </text>
                                                 );
                                             }}
                                         />
