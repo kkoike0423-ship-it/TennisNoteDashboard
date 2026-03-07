@@ -97,14 +97,26 @@ export default function TournamentAnalysis() {
         const s1 = NameNormalizer.normalizeForMatching(str1);
         const s2 = NameNormalizer.normalizeForMatching(str2);
         if (s1 === s2) return 100;
+        if (!s1 || !s2) return 0;
 
-        // Simple overlap calculation for names
-        let matches = 0;
-        const chars = new Set(s1.split(''));
-        for (const char of s2) {
-            if (chars.has(char)) matches++;
+        // Levenshtein Distance (Edit Distance)
+        const track = Array(s2.length + 1).fill(null).map(() =>
+            Array(s1.length + 1).fill(null));
+        for (let i = 0; i <= s1.length; i += 1) track[0][i] = i;
+        for (let j = 0; j <= s2.length; j += 1) track[j][0] = j;
+        for (let j = 1; j <= s2.length; j += 1) {
+            for (let i = 1; i <= s1.length; i += 1) {
+                const indicator = s1[i - 1] === s2[j - 1] ? 0 : 1;
+                track[j][i] = Math.min(
+                    track[j][i - 1] + 1, // deletion
+                    track[j - 1][i] + 1, // insertion
+                    track[j - 1][i - 1] + indicator, // substitution
+                );
+            }
         }
-        return Math.round((matches / Math.max(s1.length, s2.length)) * 100);
+        const distance = track[s2.length][s1.length];
+        const maxLength = Math.max(s1.length, s2.length);
+        return Math.round(((maxLength - distance) / maxLength) * 100);
     };
 
     const addLog = (message: string) => {
@@ -378,17 +390,21 @@ export default function TournamentAnalysis() {
     const finalizeResults = (allMatches: MatchResult[]) => {
         addLog(`最終結果を整理中 (${allMatches.length} 件のヒット)...`);
 
-        // Match results enhancement with name similarity check
-        const enhancedResults = allMatches.map(m => {
-            const matchRate = m.player ? calculateMatchRate(m.originalText, m.player.full_name) : 0;
-            // Weighted average of Tesseract confidence and string match rate
-            const combinedConfidence = (m.confidence + matchRate * 1.5) / 2.5;
-            return { ...m, confidence: combinedConfidence };
-        });
+        // Filter and Enhance results
+        const enhancedResults = allMatches
+            .map(m => {
+                const matchRate = m.player ? calculateMatchRate(m.originalText, m.player.full_name) : 0;
+                // Weighted confidence: heavily favor high string similarity (70% weight) over OCR engine confidence (30% weight)
+                const combinedConfidence = (m.confidence * 0.3) + (matchRate * 0.7);
+                return { ...m, matchRate, confidence: combinedConfidence };
+            })
+            // Filter out low similarity matches (less than 60% is usually noise or short unintentional matches)
+            .filter(m => (m.matchRate || 0) >= 60);
 
         const map = new Map();
         enhancedResults.forEach(m => {
             const id = m.player?.player_id;
+            if (!id) return;
             if (!map.has(id) || map.get(id).confidence < m.confidence) {
                 map.set(id, m);
             }
@@ -398,7 +414,7 @@ export default function TournamentAnalysis() {
         setResults(sortedResults);
         setLoading(false);
         setProcessingStep('');
-        addLog('すべてのカテゴリー照合と整理が完了しました。');
+        addLog(`フィルタリング完了: ${sortedResults.length} 件の有効なマッチを抽出しました。`);
     };
 
     return (
