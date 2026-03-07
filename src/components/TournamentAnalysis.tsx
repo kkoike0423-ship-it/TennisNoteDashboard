@@ -423,10 +423,11 @@ export default function TournamentAnalysis() {
                 <div>
                     <h1 className="text-3xl font-bold font-display text-tennis-green-900 flex items-center">
                         <Search className="mr-3 h-8 w-8 text-tennis-green-600" />
-                        トーナメント分析 (OCR)
+                        ドロー分析
+                        <span className="ml-3 text-sm bg-red-50 text-red-600 px-2 py-1 rounded-lg border border-red-100 font-bold">β版</span>
                     </h1>
                     <p className="text-tennis-green-600 mt-1">
-                        トーナメント表を読み取り、対戦相手の最新ランキングとポイントを表示します。
+                        トーナメント表（ドロー）を読み取り、対戦相手の最新ランキングとポイントを表示します。
                     </p>
                 </div>
                 <div className="flex items-center gap-3">

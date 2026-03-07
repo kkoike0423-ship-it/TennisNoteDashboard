@@ -12,7 +12,7 @@ import type { Player } from './types/database';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
-  const [activeMenu, setActiveMenu] = useState<'overview' | 'import' | 'tournament' | 'data'>('overview');
+  const [activeMenu, setActiveMenu] = useState<'overview' | 'import' | 'draw' | 'data'>('overview');
   const [managedPlayers, setManagedPlayers] = useState<Player[]>([]);
   const [activeManagedPlayerId, setActiveManagedPlayerId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -159,16 +159,19 @@ function App() {
 
           <button
             onClick={() => {
-              setActiveMenu('tournament');
+              setActiveMenu('draw');
               setIsSidebarOpen(false);
             }}
-            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'tournament'
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'draw'
               ? 'bg-tennis-green-50 text-tennis-green-700'
               : 'text-gray-600 hover:bg-tennis-green-50 hover:text-tennis-green-700'
               }`}
           >
             <Search className="w-5 h-5 mr-3" />
-            トーナメント分析
+            <span className="flex items-center gap-1.5">
+              ドロー分析
+              <span className="text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded border border-red-100 font-bold">β版</span>
+            </span>
           </button>
 
           {session?.user?.email === 'kkoike0423@gmail.com' && (
@@ -235,7 +238,7 @@ function App() {
             </button>
             <h2 className="text-lg lg:text-xl font-semibold text-gray-800 truncate">
               {activeMenu === 'overview' ? '分析ダッシュボード' :
-                activeMenu === 'tournament' ? 'トーナメント分析' :
+                activeMenu === 'draw' ? 'ドロー分析' :
                   activeMenu === 'data' ? 'データ管理' : 'CSVデータ取込'}
             </h2>
           </div>
@@ -249,7 +252,7 @@ function App() {
         <div className="flex-1 overflow-auto p-4 lg:p-8 z-10 relative">
           <div className="max-w-6xl mx-auto space-y-6">
             {activeMenu === 'import' && <DashboardOverview />}
-            {activeMenu === 'tournament' && <TournamentAnalysis />}
+            {activeMenu === 'draw' && <TournamentAnalysis />}
             {activeMenu === 'data' && <DataManagement />}
 
             {activeMenu === 'overview' && (
