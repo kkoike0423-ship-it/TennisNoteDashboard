@@ -113,23 +113,21 @@ export default function TournamentAnalysis() {
     };
 
     const processImage = async (file: File) => {
-        setProcessingStep('画像を解析中...');
-        addLog('画像の読み込みを開始します...');
+        setProcessingStep('画像を読み込み中...');
+        addLog('画像の解析準備を開始します...');
         try {
             const img = new Image();
             img.src = URL.createObjectURL(file);
             await new Promise((resolve, reject) => {
                 img.onload = resolve;
-                img.onerror = () => reject(new Error('画像の読み出しに失敗しました。'));
+                img.onerror = () => reject(new Error('画像の読み込みに失敗しました。'));
             });
 
-            const width = img.naturalWidth || img.width;
-            const height = img.naturalHeight || img.height;
-            addLog(`画像サイズ: ${width}x${height}`);
-
-            if (width === 0 || height === 0) {
-                throw new Error('画像のサイズが取得できませんでした。');
-            }
+            // Increase resolution for better OCR (2x scale)
+            const scale = 2.0;
+            const width = (img.naturalWidth || img.width) * scale;
+            const height = (img.naturalHeight || img.height) * scale;
+            addLog(`解析用サイズ (2倍スケール): ${Math.round(width)}x${Math.round(height)}`);
 
             const canvas = document.createElement('canvas');
             canvas.width = width;
@@ -137,67 +135,70 @@ export default function TournamentAnalysis() {
             const ctx = canvas.getContext('2d');
             if (!ctx) throw new Error('Canvasの作成に失敗しました。');
 
-            // Contrast enhancement for better OCR
-            ctx.filter = 'contrast(1.2) grayscale(1)';
-            ctx.drawImage(img, 0, 0);
+            // Clean draw without filters for now to see base performance
+            ctx.drawImage(img, 0, 0, width, height);
 
-            addLog('画像の前処理（コントラスト・グレースケール）を適用しました。');
+            addLog('高解像度キャンバスへの描画が完了しました。解析を開始します。');
             const results = await performOcr(canvas);
             finalizeResults(results);
         } catch (err: any) {
             addLog(`画像処理エラー: ${err.message}`);
-            throw err;
+            setLoading(false);
         }
     };
 
     const performOcr = async (imageSource: HTMLCanvasElement | string): Promise<MatchResult[]> => {
         let worker;
         try {
-            addLog('OCRエンジン (jpn+eng) を再構成中...');
+            addLog('OCRエンジン (日本語専用モード) を起動中...');
 
-            // Tesseract V5 syntax with progress logger
-            worker = await createWorker('jpn+eng', 1, {
+            worker = await createWorker('jpn', 1, {
                 logger: m => {
                     if (m.status === 'recognizing text') {
                         const progress = Math.round(m.progress * 100);
-                        if (progress % 20 === 0) setProcessingStep(`解析中... ${progress}%`);
+                        if (progress % 10 === 0) setProcessingStep(`解析中... ${progress}%`);
                     }
                 }
             });
 
-            // PSM 4: Assume a single column of text of variable sizes.
-            // Better for list-like tournament draws.
+            // PSM 6: Assume a single uniform block of text.
+            // Often better for vertical tournament brackets than PSM 4.
             await worker.setParameters({
-                tessedit_pageseg_mode: '4' as any,
+                tessedit_pageseg_mode: '6' as any,
                 tessjs_create_hocr: '0',
                 tessjs_create_tsv: '0',
             });
 
-            addLog('解析を実行中...');
+            addLog('文字認識を実行中...');
             const { data } = await worker.recognize(imageSource);
             const matches: MatchResult[] = [];
             const lines = (data as any).lines || [];
+            const text = (data as any).text || "";
 
-            addLog(`${lines.length} 行のテキストが検出されました。`);
+            addLog(`解析完了: 合計 ${text.length} 文字、${lines.length} 行を検出。`);
 
-            if (lines.length === 0) {
-                addLog('【警報】文字が検出されませんでした。解像度不足か、背景とのコントラストが低すぎる可能性があります。');
+            let activeLines = lines;
+            if (activeLines.length === 0 && text.trim().length > 0) {
+                addLog('【バックアップ】行構造は不明ですが、テキストは取得されました。改行で分割して照合を試みます。');
+                activeLines = text.split('\n').map((t: string) => ({ text: t, confidence: 50 }));
+            } else if (activeLines.length === 0) {
+                addLog('【警報】文字が全く検出されませんでした。');
+                addLog('改善のヒント: 文字が小さすぎる、または画像が暗すぎる可能性があります。');
             }
 
-            for (const line of lines) {
+            for (const line of activeLines) {
                 const rawText = line.text.trim();
                 if (!rawText) continue;
 
                 if (rawText.length < 2) {
-                    // Too short, but log it anyway if it looks like something
-                    if (rawText.length > 0) addLog(`[SKIPPED] ${rawText}`);
+                    if (rawText.length > 0) addLog(`[スキップ] "${rawText}" (短すぎます)`);
                     continue;
                 }
 
                 const playerMatch = await findBestPlayerMatch(rawText);
 
                 if (playerMatch) {
-                    addLog(`[MATCHED] "${rawText}" -> ${playerMatch.full_name}`);
+                    addLog(`[一致確認] "${rawText}" → ${playerMatch.full_name}`);
                     const normalizedValue = NameNormalizer.normalizeForMatching(rawText);
                     const { data: rankData } = await supabase
                         .from('category_rankings')
@@ -213,15 +214,15 @@ export default function TournamentAnalysis() {
                         rank: rankData?.[0]?.rank || null,
                         points: playerMatch.ranking_point || null,
                         category: rankData?.[0]?.category || playerMatch.category || null,
-                        confidence: line.confidence
+                        confidence: line.confidence || 0
                     });
                 } else {
-                    addLog(`[NO MATCH] "${rawText}"`);
+                    addLog(`[照合不可] "${rawText}"`);
                 }
             }
 
             await worker.terminate();
-            addLog('OCR処理が完了しました。');
+            addLog('すべてのOCR・照合プロセスが終了しました。');
             return matches;
         } catch (err: any) {
             addLog(`OCRエラー: ${err.message}`);
