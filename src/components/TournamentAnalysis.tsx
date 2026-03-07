@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
     FileText, Search, Loader2, Upload,
     ZoomIn, ZoomOut, RefreshCw, AlertCircle, Info
@@ -30,7 +30,63 @@ export default function TournamentAnalysis() {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [debugLogs, setDebugLogs] = useState<string[]>([]);
     const [showDebug, setShowDebug] = useState(false);
+    const [categories, setCategories] = useState<string[]>([]);
+    const [selectedCategory, setSelectedCategory] = useState<string>('');
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Fetch categories and set initial one based on managed players
+    useEffect(() => {
+        const initCategories = async () => {
+            // Fetch all unique categories from players table
+            const { data: catData } = await supabase
+                .from('players')
+                .select('category')
+                .not('category', 'is', null);
+
+            if (catData) {
+                const uniqueCats = Array.from(new Set(catData.map(c => c.category))).sort();
+                setCategories(uniqueCats);
+            }
+
+            // Fetch the category of the "managed" player for kkoike0423@gmail.com
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            if (currentSession) {
+                const { data: watched } = await supabase
+                    .from('user_watched_players')
+                    .select('player_id')
+                    .eq('user_id', currentSession.user.id)
+                    .eq('player_type', 'managed')
+                    .limit(1);
+
+                if (watched?.[0]) {
+                    const { data: player } = await supabase
+                        .from('players')
+                        .select('category')
+                        .eq('player_id', watched[0].player_id)
+                        .single();
+
+                    if (player?.category) {
+                        setSelectedCategory(player.category);
+                    }
+                }
+            }
+        };
+        initCategories();
+    }, []);
+
+    const calculateMatchRate = (str1: string, str2: string): number => {
+        const s1 = NameNormalizer.normalizeForMatching(str1);
+        const s2 = NameNormalizer.normalizeForMatching(str2);
+        if (s1 === s2) return 100;
+
+        // Simple overlap calculation for names
+        let matches = 0;
+        const chars = new Set(s1.split(''));
+        for (const char of s2) {
+            if (chars.has(char)) matches++;
+        }
+        return Math.round((matches / Math.max(s1.length, s2.length)) * 100);
+    };
 
     const addLog = (message: string) => {
         setDebugLogs(prev => [`[${new Date().toLocaleTimeString()}] ${message}`, ...prev]);
@@ -44,7 +100,7 @@ export default function TournamentAnalysis() {
         setLoading(true);
         setResults([]);
         setDebugLogs([]);
-        addLog(`ファイルを選択しました: ${file.name} (${file.type})`);
+        addLog(`ファイルを選択しました: ${file.name} (対象カテゴリー: ${selectedCategory || 'すべて'})`);
 
         const isPdfFile = file.type === 'application/pdf';
 
@@ -240,13 +296,18 @@ export default function TournamentAnalysis() {
         if (terms.length === 0) return null;
 
         for (const term of terms) {
-            const { data: player } = await supabase
+            let query = supabase
                 .from('players')
                 .select('*')
-                .or(`full_name.ilike.%${term}%,last_name.ilike.%${term}%`)
-                .limit(1);
+                .or(`full_name.ilike.%${term}%,last_name.ilike.%${term}%`);
 
-            if (player?.[0]) return player[0];
+            if (selectedCategory) {
+                query = query.eq('category', selectedCategory);
+            }
+
+            const { data: players } = await query.limit(1);
+
+            if (players?.[0]) return players[0];
         }
 
         return null;
@@ -254,17 +315,28 @@ export default function TournamentAnalysis() {
 
     const finalizeResults = (allMatches: MatchResult[]) => {
         addLog(`最終結果を整理中 (${allMatches.length} 件のヒット)...`);
+
+        // Match results enhancement with name similarity check
+        const enhancedResults = allMatches.map(m => {
+            const matchRate = m.player ? calculateMatchRate(m.originalText, m.player.full_name) : 0;
+            // Weighted average of Tesseract confidence and string match rate
+            const combinedConfidence = (m.confidence + matchRate * 1.5) / 2.5;
+            return { ...m, confidence: combinedConfidence };
+        });
+
         const map = new Map();
-        allMatches.forEach(m => {
+        enhancedResults.forEach(m => {
             const id = m.player?.player_id;
             if (!map.has(id) || map.get(id).confidence < m.confidence) {
                 map.set(id, m);
             }
         });
-        setResults(Array.from(map.values()));
+
+        const sortedResults = Array.from(map.values()).sort((a, b) => b.confidence - a.confidence);
+        setResults(sortedResults);
         setLoading(false);
         setProcessingStep('');
-        addLog('すべての処理が完了しました。');
+        addLog('すべてのカテゴリー照合と整理が完了しました。');
     };
 
     return (
@@ -279,23 +351,38 @@ export default function TournamentAnalysis() {
                         トーナメント表を読み取り、対戦相手の最新ランキングとポイントを表示します。
                     </p>
                 </div>
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => setShowDebug(!showDebug)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-colors ${showDebug ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-gray-50 text-gray-600 border-gray-200'
-                            }`}
-                    >
-                        デバッグ表示
-                    </button>
-                    {previewUrl && (
-                        <button
-                            onClick={() => { setPreviewUrl(null); setResults([]); setDebugLogs([]); }}
-                            className="flex items-center gap-2 bg-rose-50 text-rose-600 px-4 py-2 rounded-xl border border-rose-100 hover:bg-rose-100 transition-colors"
+                <div className="flex items-center gap-3">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] text-tennis-green-600 font-bold ml-1 mb-1">対象カテゴリー</span>
+                        <select
+                            value={selectedCategory}
+                            onChange={(e) => setSelectedCategory(e.target.value)}
+                            className="bg-white border border-tennis-green-200 text-gray-700 py-2 px-4 pr-8 rounded-xl outline-none focus:ring-2 focus:ring-tennis-green-500 appearance-none min-w-[140px] shadow-sm transition-all hover:border-tennis-green-400"
                         >
-                            <RefreshCw size={18} />
-                            リセット
+                            <option value="">すべて</option>
+                            {categories.map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex gap-2 self-end">
+                        <button
+                            onClick={() => setShowDebug(!showDebug)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-colors ${showDebug ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-gray-50 text-gray-600 border-gray-200'
+                                }`}
+                        >
+                            デバッグ表示
                         </button>
-                    )}
+                        {previewUrl && (
+                            <button
+                                onClick={() => { setPreviewUrl(null); setResults([]); setDebugLogs([]); }}
+                                className="flex items-center gap-2 bg-rose-50 text-rose-600 px-4 py-2 rounded-xl border border-rose-100 hover:bg-rose-100 transition-colors"
+                            >
+                                <RefreshCw size={18} />
+                                リセット
+                            </button>
+                        )}
+                    </div>
                 </div>
             </header>
 
@@ -413,58 +500,58 @@ export default function TournamentAnalysis() {
                                 <table className="w-full text-left border-collapse">
                                     <thead className="sticky top-0 bg-white/90 backdrop-blur-md z-10 border-b border-gray-100 shadow-sm">
                                         <tr>
-                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">選手 / 認識</th>
-                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">カテゴリ</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">OCR認識テキスト</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">一致した選手 / 精度</th>
                                             <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">順位 / pt</th>
-                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">信頼度</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
-                                        {results.map((res, idx) => (
-                                            <tr key={idx} className="hover:bg-tennis-green-50/50 transition-colors group">
-                                                <td className="px-6 py-5">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-700 font-bold shrink-0">
-                                                            {res.player?.last_name?.[0]}
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-bold text-gray-800 text-lg">{res.player?.full_name}</p>
-                                                            <p className="text-xs text-gray-400 mt-1 italic group-hover:text-tennis-green-600 transition-colors">
-                                                                "{res.originalText}"
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-5 text-center">
-                                                    <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold border border-blue-100">
-                                                        {res.category || '-'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-5 text-center">
-                                                    <div className="flex flex-col items-center">
-                                                        <span className="text-tennis-green-600 font-black text-lg">
-                                                            {res.rank ? `${res.rank}位` : '-'}
+                                        {results.map((res, idx) => {
+                                            const matchRate = res.player ? calculateMatchRate(res.originalText, res.player.full_name) : 0;
+                                            return (
+                                                <tr key={idx} className="hover:bg-tennis-green-50/50 transition-colors group">
+                                                    <td className="px-6 py-5">
+                                                        <span className="font-mono text-sm text-gray-500 bg-gray-50 px-2 py-1 rounded">
+                                                            "{res.originalText}"
                                                         </span>
-                                                        <span className="text-[10px] text-gray-400 font-bold">
-                                                            {res.points?.toLocaleString() || '0'} pt
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-5 text-right">
-                                                    <div className="flex flex-col items-end gap-1">
-                                                        <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                            <div
-                                                                className={`h-full ${res.confidence > 80 ? 'bg-tennis-green-500' : 'bg-orange-400'}`}
-                                                                style={{ width: `${res.confidence}%` }}
-                                                            />
+                                                    </td>
+                                                    <td className="px-6 py-5">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-700 font-bold shrink-0">
+                                                                {res.player?.last_name?.[0]}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-bold text-gray-800">{res.player?.full_name}</p>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <div className="w-12 h-1 bg-gray-100 rounded-full overflow-hidden">
+                                                                        <div
+                                                                            className={`h-full ${matchRate > 80 ? 'bg-tennis-green-500' : 'bg-orange-400'}`}
+                                                                            style={{ width: `${matchRate}%` }}
+                                                                        />
+                                                                    </div>
+                                                                    <span className="text-[10px] font-bold text-tennis-green-600">
+                                                                        一致率 {matchRate}%
+                                                                    </span>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <span className="text-[10px] font-bold text-gray-500">
-                                                            {Math.round(res.confidence)}%
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                    </td>
+                                                    <td className="px-6 py-5 text-center">
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="text-tennis-green-600 font-black text-lg">
+                                                                {res.rank ? `${res.rank}位` : '-'}
+                                                            </span>
+                                                            <span className="text-[10px] text-gray-400 font-bold">
+                                                                {res.points?.toLocaleString() || '0'} pt
+                                                            </span>
+                                                            <span className="text-[9px] bg-blue-50 text-blue-600 px-1 rounded mt-0.5 border border-blue-100">
+                                                                {res.category}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             ) : !loading ? (
