@@ -137,9 +137,11 @@ export default function TournamentAnalysis() {
             const ctx = canvas.getContext('2d');
             if (!ctx) throw new Error('Canvasの作成に失敗しました。');
 
+            // Contrast enhancement for better OCR
+            ctx.filter = 'contrast(1.2) grayscale(1)';
             ctx.drawImage(img, 0, 0);
 
-            addLog('解析プロセスへ渡します...');
+            addLog('画像の前処理（コントラスト・グレースケール）を適用しました。');
             const results = await performOcr(canvas);
             finalizeResults(results);
         } catch (err: any) {
@@ -151,18 +153,35 @@ export default function TournamentAnalysis() {
     const performOcr = async (imageSource: HTMLCanvasElement | string): Promise<MatchResult[]> => {
         let worker;
         try {
-            addLog('OCRエンジン (jpn+eng) を起動中...');
-            worker = await createWorker('jpn+eng');
+            addLog('OCRエンジン (jpn+eng) を再構成中...');
 
-            addLog('解析を実行中... (これには数秒かかる場合があります)');
+            // Tesseract V5 syntax with progress logger
+            worker = await createWorker('jpn+eng', 1, {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        const progress = Math.round(m.progress * 100);
+                        if (progress % 20 === 0) setProcessingStep(`解析中... ${progress}%`);
+                    }
+                }
+            });
+
+            // PSM 4: Assume a single column of text of variable sizes.
+            // Better for list-like tournament draws.
+            await worker.setParameters({
+                tessedit_pageseg_mode: '4' as any,
+                tessjs_create_hocr: '0',
+                tessjs_create_tsv: '0',
+            });
+
+            addLog('解析を実行中...');
             const { data } = await worker.recognize(imageSource);
             const matches: MatchResult[] = [];
             const lines = (data as any).lines || [];
 
-            addLog(`${lines.length} 行のテキストが検出されました。データベースと照合します...`);
+            addLog(`${lines.length} 行のテキストが検出されました。`);
 
             if (lines.length === 0) {
-                addLog('[警報] 文字が見つかりませんでした。画像のコントラストが低いか、文字が小さすぎる可能性があります。');
+                addLog('【警報】文字が検出されませんでした。解像度不足か、背景とのコントラストが低すぎる可能性があります。');
             }
 
             for (const line of lines) {
