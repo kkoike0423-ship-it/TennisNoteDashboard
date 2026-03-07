@@ -114,42 +114,56 @@ export default function TournamentAnalysis() {
 
     const processImage = async (file: File) => {
         setProcessingStep('画像を解析中...');
-        addLog('画像の解析を開始します...');
+        addLog('画像の読み込みを開始します...');
         try {
             const img = new Image();
             img.src = URL.createObjectURL(file);
             await new Promise((resolve, reject) => {
                 img.onload = resolve;
-                img.onerror = () => reject(new Error('画像の読み込みに失敗しました'));
+                img.onerror = () => reject(new Error('画像の読み出しに失敗しました。'));
             });
 
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx?.drawImage(img, 0, 0);
+            const width = img.naturalWidth || img.width;
+            const height = img.naturalHeight || img.height;
+            addLog(`画像サイズ: ${width}x${height}`);
 
-            addLog('画像OCRを開始します...');
-            const pageResults = await performOcr(canvas);
-            finalizeResults(pageResults);
+            if (width === 0 || height === 0) {
+                throw new Error('画像のサイズが取得できませんでした。');
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) throw new Error('Canvasの作成に失敗しました。');
+
+            ctx.drawImage(img, 0, 0);
+
+            addLog('解析プロセスへ渡します...');
+            const results = await performOcr(canvas);
+            finalizeResults(results);
         } catch (err: any) {
             addLog(`画像処理エラー: ${err.message}`);
             throw err;
         }
     };
 
-    const performOcr = async (canvas: HTMLCanvasElement): Promise<MatchResult[]> => {
+    const performOcr = async (imageSource: HTMLCanvasElement | string): Promise<MatchResult[]> => {
         let worker;
         try {
-            addLog('Tesseract Workerを初期化中(jpn)...');
-            worker = await createWorker('jpn');
+            addLog('OCRエンジン (jpn+eng) を起動中...');
+            worker = await createWorker('jpn+eng');
 
-            addLog('文字認識を実行中...');
-            const { data } = await worker.recognize(canvas);
+            addLog('解析を実行中... (これには数秒かかる場合があります)');
+            const { data } = await worker.recognize(imageSource);
             const matches: MatchResult[] = [];
             const lines = (data as any).lines || [];
 
-            addLog(`${lines.length} 行のテキストを抽出しました。照合を開始します...`);
+            addLog(`${lines.length} 行のテキストが検出されました。データベースと照合します...`);
+
+            if (lines.length === 0) {
+                addLog('[警報] 文字が見つかりませんでした。画像のコントラストが低いか、文字が小さすぎる可能性があります。');
+            }
 
             for (const line of lines) {
                 const rawText = line.text.trim();
