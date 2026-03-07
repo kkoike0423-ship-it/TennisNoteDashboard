@@ -270,11 +270,11 @@ export default function TournamentAnalysis() {
                     continue;
                 }
 
-                const playerMatch = await findBestPlayerMatch(rawText);
+                const matchData = await findBestPlayerMatch(rawText);
 
-                if (playerMatch) {
-                    addLog(`[一致確認] "${rawText}" → ${playerMatch.full_name}`);
-                    const normalizedValue = NameNormalizer.normalizeForMatching(rawText);
+                if (matchData) {
+                    const { player: playerMatch, cleanedName } = matchData;
+                    addLog(`[一致確認] "${rawText}" → ${playerMatch.full_name} (抽出: ${cleanedName})`);
 
                     // Search category_rankings with category and latest year_month
                     let rankQuery = supabase
@@ -294,8 +294,8 @@ export default function TournamentAnalysis() {
                         .limit(1);
 
                     matches.push({
-                        originalText: rawText,
-                        normalizedText: normalizedValue,
+                        originalText: cleanedName, // Use cleaned/joined name for display
+                        normalizedText: NameNormalizer.normalizeForMatching(cleanedName),
                         player: playerMatch,
                         rank: rankData?.[0]?.rank || null,
                         points: playerMatch.ranking_point || null,
@@ -303,7 +303,8 @@ export default function TournamentAnalysis() {
                         confidence: line.confidence || 0
                     });
                 } else {
-                    addLog(`[照合不可] "${rawText}"`);
+                    // Log even if no match to show what was tried
+                    // addLog(`[照合不可] "${rawText}"`);
                 }
             }
 
@@ -317,27 +318,37 @@ export default function TournamentAnalysis() {
         }
     };
 
-    const findBestPlayerMatch = async (rawText: string): Promise<Player | null> => {
+    const findBestPlayerMatch = async (rawText: string): Promise<{ player: Player; cleanedName: string } | null> => {
         // Japanese name pattern: Kanji, Hiragana, Katakana blocks
         // We look for blocks of at least 2 Japanese characters
         const jpNameRegex = /[\u4e00-\u9faf\u3040-\u309f\u30a0-\u30ff]{2,}/g;
         const jpMatches = rawText.match(jpNameRegex);
 
-        if (!jpMatches) {
-            addLog(`[スキップ] 日本語の名前（2文字以上）が見つかりません: "${rawText}"`);
-            return null;
-        }
+        if (!jpMatches || jpMatches.length === 0) return null;
 
-        // Try matching each Japanese block found (starting from the one most likely to be a name)
+        // Try single blocks first
         for (const term of jpMatches) {
-            // First, try an exact match or highly similar match in the players table
             const { data: players } = await supabase
                 .from('players')
                 .select('*')
                 .or(`full_name.ilike.%${term}%,last_name.ilike.%${term}%`)
                 .limit(1);
 
-            if (players?.[0]) return players[0];
+            if (players?.[0]) return { player: players[0], cleanedName: term };
+        }
+
+        // Try joining adjacent blocks (surname + given name)
+        if (jpMatches.length >= 2) {
+            for (let i = 0; i < jpMatches.length - 1; i++) {
+                const combined = jpMatches[i] + jpMatches[i + 1];
+                const { data: players } = await supabase
+                    .from('players')
+                    .select('*')
+                    .or(`full_name.ilike.%${combined}%,last_name.ilike.%${combined}%`)
+                    .limit(1);
+
+                if (players?.[0]) return { player: players[0], cleanedName: combined };
+            }
         }
 
         return null;
