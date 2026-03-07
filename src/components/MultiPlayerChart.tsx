@@ -255,7 +255,44 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                             />
                             <YAxis reversed tick={{ fill: '#6b7280', fontSize: 12 }} tickLine={false} axisLine={false} domain={['dataMin - 1', 'dataMax + 1']} />
                             <Tooltip
-                                contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                content={(props: any) => {
+                                    const { active, payload, label } = props;
+                                    if (active && payload && payload.length) {
+                                        // Sort by rank value (asc)
+                                        const sortedPayload = [...payload].sort((a, b) => a.value - b.value);
+
+                                        return (
+                                            <div className="bg-white/95 backdrop-blur-sm p-3 rounded-xl border border-tennis-green-100 shadow-lg animate-in fade-in zoom-in duration-200">
+                                                <p className="text-[10px] font-bold text-gray-400 mb-2 tracking-wider">
+                                                    {label?.slice(0, 4)}年{label?.slice(4)}月
+                                                </p>
+                                                <div className="space-y-1.5">
+                                                    {sortedPayload.map((entry: any, idx: number) => {
+                                                        const p = watchedPlayers.find(wp => wp.player_id === entry.dataKey);
+                                                        const points = p?.ranking_point || 0;
+                                                        return (
+                                                            <div key={idx} className="flex items-center justify-between gap-4">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div
+                                                                        className="w-2 h-2 rounded-full"
+                                                                        style={{ backgroundColor: entry.color }}
+                                                                    />
+                                                                    <span className="text-xs font-bold text-gray-700">
+                                                                        {entry.name}
+                                                                    </span>
+                                                                </div>
+                                                                <span className="text-xs font-black text-tennis-green-600">
+                                                                    {entry.value}位 <span className="text-[10px] font-normal text-gray-400">/ {points.toLocaleString()}pt</span>
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                }}
                             />
                             <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
                             {playerLines.map((playerId) => {
