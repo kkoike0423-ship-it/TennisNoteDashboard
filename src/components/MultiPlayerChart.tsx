@@ -45,6 +45,7 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
     const [categoryData, setCategoryData] = useState<CategoryRanking[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>("");
     const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+    const [hiddenPlayerIds, setHiddenPlayerIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         const fetchData = async () => {
@@ -136,8 +137,17 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
 
         window.addEventListener('watched-players-changed', handleUpdate);
 
+        const handleVisibilityUpdate = (e: Event) => {
+            const customEvent = e as CustomEvent;
+            if (customEvent.detail?.playerType === playerType) {
+                setHiddenPlayerIds(new Set(customEvent.detail.hiddenIds));
+            }
+        };
+        window.addEventListener('player-visibility-changed', handleVisibilityUpdate);
+
         return () => {
             window.removeEventListener('watched-players-changed', handleUpdate);
+            window.removeEventListener('player-visibility-changed', handleVisibilityUpdate);
         };
     }, [playerType, activeManagedPlayerId]);
 
@@ -161,12 +171,13 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
         return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
     }, [categoryData, selectedCategory]);
 
-    // Unique player lines to draw (one line per player), sorted by latest rank
     const playerLines = useMemo(() => {
         const playerIds = new Set<string>();
         categoryData.forEach(item => {
             if (watchedPlayers.some(p => p.player_id === item.player_id)) {
-                playerIds.add(item.player_id);
+                if (!hiddenPlayerIds.has(item.player_id)) {
+                    playerIds.add(item.player_id);
+                }
             }
         });
 
@@ -185,7 +196,7 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
             if (rankA === rankB) return a.localeCompare(b);
             return rankA - rankB;
         });
-    }, [categoryData, watchedPlayers, chartDataCategory]);
+    }, [categoryData, watchedPlayers, hiddenPlayerIds, chartDataCategory]);
 
     if (loading) {
         return (
