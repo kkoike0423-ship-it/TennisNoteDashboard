@@ -42,6 +42,7 @@ interface MultiPlayerChartProps {
 export default function MultiPlayerChart({ playerType, title, activeManagedPlayerId }: MultiPlayerChartProps) {
     const [loading, setLoading] = useState(true);
     const [watchedPlayers, setWatchedPlayers] = useState<Player[]>([]);
+    const [selectedPlayers, setSelectedPlayers] = useState<Set<string>>(new Set());
     const [categoryData, setCategoryData] = useState<CategoryRanking[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>("");
     const [availableCategories, setAvailableCategories] = useState<string[]>([]);
@@ -91,7 +92,11 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                 .select('*')
                 .in('player_id', pIds);
 
-            if (players) setWatchedPlayers(players as Player[]);
+            if (players) {
+                setWatchedPlayers(players as Player[]);
+                // Initialize all players as selected when loaded
+                setSelectedPlayers(new Set((players as Player[]).map(p => p.player_id)));
+            }
 
             // 3. Fetch Category Rankings (Include Managed Player for matching)
             const queryIds = [...pIds];
@@ -151,6 +156,18 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
         };
     }, [playerType, activeManagedPlayerId]);
 
+    const togglePlayerSelection = (playerId: string) => {
+        setSelectedPlayers(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(playerId)) {
+                newSet.delete(playerId);
+            } else {
+                newSet.add(playerId);
+            }
+            return newSet;
+        });
+    };
+
 
 
     // Transform 'category_rankings' to a format suitable for Recharts.
@@ -174,7 +191,7 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
     const playerLines = useMemo(() => {
         const playerIds = new Set<string>();
         categoryData.forEach(item => {
-            if (watchedPlayers.some(p => p.player_id === item.player_id)) {
+            if (selectedPlayers.has(item.player_id) && watchedPlayers.some(p => p.player_id === item.player_id)) {
                 if (!hiddenPlayerIds.has(item.player_id)) {
                     playerIds.add(item.player_id);
                 }
@@ -244,6 +261,42 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                         )}
                     </select>
                 </div>
+            </div>
+
+            {/* Player Selection Checkboxes */}
+            <div className="flex flex-wrap gap-3 mb-6">
+                {watchedPlayers.map((player, idx) => {
+                    const color = getColor(player.player_id, idx);
+                    const isSelected = selectedPlayers.has(player.player_id);
+                    const name = player.full_name || player.last_name || "Unknown";
+
+                    return (
+                        <label
+                            key={player.player_id}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm cursor-pointer transition-all duration-200 select-none ${isSelected
+                                    ? 'bg-white shadow-sm border-gray-200'
+                                    : 'bg-gray-50 border-transparent text-gray-400 opacity-70 hover:opacity-100'
+                                }`}
+                        >
+                            <input
+                                type="checkbox"
+                                className="hidden"
+                                checked={isSelected}
+                                onChange={() => togglePlayerSelection(player.player_id)}
+                            />
+                            <div
+                                className="w-3 h-3 rounded-full flex-shrink-0 transition-transform duration-200"
+                                style={{
+                                    backgroundColor: isSelected ? color : '#d1d5db',
+                                    transform: isSelected ? 'scale(1)' : 'scale(0.8)'
+                                }}
+                            />
+                            <span className={`font-medium ${isSelected ? 'text-gray-700' : 'text-gray-500'}`}>
+                                {name}
+                            </span>
+                        </label>
+                    );
+                })}
             </div>
 
             <div className={`w-full ${playerType === 'managed' ? 'h-[300px] md:h-[400px]' : 'h-[500px] md:h-[700px]'}`}>
