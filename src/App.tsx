@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './utils/supabaseClient';
 import type { Session } from '@supabase/supabase-js';
 import Auth from './components/Auth';
@@ -33,7 +33,7 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchManagedPlayers = async () => {
+  const fetchManagedPlayers = useCallback(async () => {
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     if (!currentSession) return;
 
@@ -65,7 +65,7 @@ function App() {
       setManagedPlayers([]);
       setActiveManagedPlayerId(null);
     }
-  };
+  }, [activeManagedPlayerId]);
 
   const handleDeleteManagedPlayer = async () => {
     if (!activeManagedPlayerId || !session) return;
@@ -94,19 +94,24 @@ function App() {
 
   useEffect(() => {
     if (session) {
-      fetchManagedPlayers();
+      const refreshTimeout = window.setTimeout(() => {
+        void fetchManagedPlayers();
+      }, 0);
 
       // Listen for managed player registration events to refresh the dropdown
       const handleRefresh = (e: Event) => {
         const detail = (e as CustomEvent).detail;
         if (detail?.playerType === 'managed') {
-          fetchManagedPlayers();
+          void fetchManagedPlayers();
         }
       };
       window.addEventListener('watched-players-changed', handleRefresh);
-      return () => window.removeEventListener('watched-players-changed', handleRefresh);
+      return () => {
+        window.clearTimeout(refreshTimeout);
+        window.removeEventListener('watched-players-changed', handleRefresh);
+      };
     }
-  }, [session]);
+  }, [session, fetchManagedPlayers]);
 
   if (!session) {
     return <Auth />;

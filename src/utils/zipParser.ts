@@ -3,6 +3,44 @@ import Papa from 'papaparse';
 import { supabase } from './supabaseClient';
 import type { Player } from '../types/database';
 
+type PlayerCsvRow = {
+    playerId?: string;
+    firstName?: string;
+    lastName?: string;
+    fullName?: string;
+    team?: string;
+    category?: string;
+    gender?: string;
+    schoolType?: string;
+    updateYm?: string;
+    rankingPoint?: string;
+};
+
+type RankingHistoryCsvRow = {
+    playerId?: string;
+    yearMonth?: string;
+    pointsRaw?: string;
+    pointsValue?: string;
+    createdAt?: string;
+    updatedAt?: string;
+};
+
+type CategoryRankingCsvRow = {
+    category?: string;
+    playerId?: string;
+    yearMonth?: string;
+    rank?: string;
+    createdAt?: string;
+    updatedAt?: string;
+};
+
+const getErrorMessage = (error: unknown) => {
+    if (error instanceof Error) {
+        return error.message;
+    }
+    return String(error);
+};
+
 export const parseAndUploadZip = async (file: File, onProgress: (msg: string) => void) => {
     try {
         const zip = new JSZip();
@@ -37,7 +75,7 @@ export const parseAndUploadZip = async (file: File, onProgress: (msg: string) =>
         if (playersCsv) {
             onProgress('Parsing Players CSV...');
             const parsed = Papa.parse(playersCsv, { header: true, skipEmptyLines: true });
-            const players: Player[] = (parsed.data as any[]).map(row => ({
+            const players: Player[] = (parsed.data as PlayerCsvRow[]).map(row => ({
                 player_id: (row.playerId || '').trim(),
                 first_name: (row.firstName || '').trim(),
                 last_name: (row.lastName || '').trim(),
@@ -47,7 +85,7 @@ export const parseAndUploadZip = async (file: File, onProgress: (msg: string) =>
                 gender: (row.gender || '').trim(),
                 school_type: (row.schoolType || '').trim(),
                 update_ym: (row.updateYm || '').trim(),
-                ranking_point: parseInt(row.rankingPoint) || 0
+                ranking_point: parseInt(row.rankingPoint ?? '0', 10) || 0
             })).filter(p => p.player_id); // ensure valid ID
 
             onProgress(`Uploading ${players.length} Players to Database...`);
@@ -74,13 +112,13 @@ export const parseAndUploadZip = async (file: File, onProgress: (msg: string) =>
         if (historyCsv) {
             onProgress('Parsing Ranking History CSV...');
             const parsed = Papa.parse(historyCsv, { header: true, skipEmptyLines: true });
-            const historyRows = (parsed.data as any[]).map(row => ({
+            const historyRows = (parsed.data as RankingHistoryCsvRow[]).map(row => ({
                 player_id: row.playerId,
                 year_month: row.yearMonth,
-                points_raw: parseInt(row.pointsRaw) || 0,
-                points_value: parseInt(row.pointsValue) || 0,
-                created_at: row.createdAt ? new Date(parseInt(row.createdAt)).toISOString() : null,
-                updated_at: row.updatedAt ? new Date(parseInt(row.updatedAt)).toISOString() : null
+                points_raw: parseInt(row.pointsRaw ?? '0', 10) || 0,
+                points_value: parseInt(row.pointsValue ?? '0', 10) || 0,
+                created_at: row.createdAt ? new Date(parseInt(row.createdAt, 10)).toISOString() : null,
+                updated_at: row.updatedAt ? new Date(parseInt(row.updatedAt, 10)).toISOString() : null
             })).filter(r => r.player_id && r.year_month);
 
             onProgress(`Uploading ${historyRows.length} Ranking History records...`);
@@ -95,13 +133,13 @@ export const parseAndUploadZip = async (file: File, onProgress: (msg: string) =>
         if (categoryCsv) {
             onProgress('Parsing Category Rankings CSV...');
             const parsed = Papa.parse(categoryCsv, { header: true, skipEmptyLines: true });
-            const categoryRows = (parsed.data as any[]).map(row => ({
+            const categoryRows = (parsed.data as CategoryRankingCsvRow[]).map(row => ({
                 category: (row.category || '').trim(),
                 player_id: (row.playerId || '').trim(),
                 year_month: (row.yearMonth || '').trim(),
-                rank: parseInt(row.rank) || 0,
-                created_at: row.createdAt ? new Date(parseInt(row.createdAt)).toISOString() : null,
-                updated_at: row.updatedAt ? new Date(parseInt(row.updatedAt)).toISOString() : null
+                rank: parseInt(row.rank ?? '0', 10) || 0,
+                created_at: row.createdAt ? new Date(parseInt(row.createdAt, 10)).toISOString() : null,
+                updated_at: row.updatedAt ? new Date(parseInt(row.updatedAt, 10)).toISOString() : null
             })).filter(r => r.player_id && r.category && r.year_month);
 
             onProgress(`Uploading ${categoryRows.length} Category Ranking records...`);
@@ -114,8 +152,8 @@ export const parseAndUploadZip = async (file: File, onProgress: (msg: string) =>
 
         onProgress('Upload Complete!');
         return true;
-    } catch (error: any) {
-        onProgress(`Error: ${error.message}`);
+    } catch (error: unknown) {
+        onProgress(`Error: ${getErrorMessage(error)}`);
         return false;
     }
 };

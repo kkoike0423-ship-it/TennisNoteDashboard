@@ -7,7 +7,7 @@ import { supabase } from '../utils/supabaseClient';
 import { NameNormalizer } from '../utils/NameNormalizer';
 import type { Player } from '../types/database';
 import * as pdfjs from 'pdfjs-dist';
-import { createWorker } from 'tesseract.js';
+import { createWorker, PSM } from 'tesseract.js';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
 // Initialize PDF.js worker
@@ -22,6 +22,23 @@ interface MatchResult {
     category: string | null;
     confidence: number;
 }
+
+type OcrLine = {
+    text: string;
+    confidence?: number;
+};
+
+type OcrData = {
+    lines?: OcrLine[];
+    text?: string;
+};
+
+const getErrorMessage = (error: unknown) => {
+    if (error instanceof Error) {
+        return error.message;
+    }
+    return String(error);
+};
 
 export default function TournamentAnalysis() {
     const [loading, setLoading] = useState(false);
@@ -146,8 +163,8 @@ export default function TournamentAnalysis() {
                 alert('PDFまたは画像ファイルを選択してください。');
                 setLoading(false);
             }
-        } catch (err: any) {
-            addLog(`致命的なエラー: ${err.message}`);
+        } catch (err: unknown) {
+            addLog(`致命的なエラー: ${getErrorMessage(err)}`);
             console.error(err);
             setLoading(false);
         }
@@ -179,7 +196,7 @@ export default function TournamentAnalysis() {
                 canvas.width = viewport.width;
 
                 if (context) {
-                    await (page as any).render({ canvasContext: context, viewport, canvas }).promise;
+                    await page.render({ canvasContext: context, viewport, canvas }).promise;
 
                     if (!previewSet) {
                         setPreviewUrl(canvas.toDataURL());
@@ -193,8 +210,8 @@ export default function TournamentAnalysis() {
             }
 
             finalizeResults(allMatchedResults);
-        } catch (err: any) {
-            addLog(`PDF処理エラー: ${err.message}`);
+        } catch (err: unknown) {
+            addLog(`PDF処理エラー: ${getErrorMessage(err)}`);
             throw err;
         }
     };
@@ -228,8 +245,8 @@ export default function TournamentAnalysis() {
             addLog('高解像度キャンバスへの描画が完了しました。解析を開始します。');
             const results = await performOcr(canvas);
             finalizeResults(results);
-        } catch (err: any) {
-            addLog(`画像処理エラー: ${err.message}`);
+        } catch (err: unknown) {
+            addLog(`画像処理エラー: ${getErrorMessage(err)}`);
             setLoading(false);
         }
     };
@@ -251,23 +268,24 @@ export default function TournamentAnalysis() {
             // PSM 6: Assume a single uniform block of text.
             // Often better for vertical tournament brackets than PSM 4.
             await worker.setParameters({
-                tessedit_pageseg_mode: '6' as any,
+                tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
                 tessjs_create_hocr: '0',
                 tessjs_create_tsv: '0',
             });
 
             addLog('文字認識を実行中...');
             const { data } = await worker.recognize(imageSource);
+            const ocrData = data as OcrData;
             const matches: MatchResult[] = [];
-            const lines = (data as any).lines || [];
-            const text = (data as any).text || "";
+            const lines = ocrData.lines ?? [];
+            const text = ocrData.text ?? "";
 
             addLog(`解析完了: 合計 ${text.length} 文字、${lines.length} 行を検出。`);
 
             let activeLines = lines;
             if (activeLines.length === 0 && text.trim().length > 0) {
                 addLog('【バックアップ】行構造は不明ですが、テキストは取得されました。改行で分割して照合を試みます。');
-                activeLines = text.split('\n').map((t: string) => ({ text: t, confidence: 50 }));
+                activeLines = text.split('\n').map((t: string): OcrLine => ({ text: t, confidence: 50 }));
             } else if (activeLines.length === 0) {
                 addLog('【警報】文字が全く検出されませんでした。');
                 addLog('改善のヒント: 文字が小さすぎる、または画像が暗すぎる可能性があります。');
@@ -323,8 +341,8 @@ export default function TournamentAnalysis() {
             await worker.terminate();
             addLog('すべてのOCR・照合プロセスが終了しました。');
             return matches;
-        } catch (err: any) {
-            addLog(`OCRエラー: ${err.message}`);
+        } catch (err: unknown) {
+            addLog(`OCRエラー: ${getErrorMessage(err)}`);
             if (worker) await worker.terminate();
             return [];
         }
@@ -401,11 +419,12 @@ export default function TournamentAnalysis() {
             // Filter out low similarity matches (less than 60% is usually noise or short unintentional matches)
             .filter(m => (m.matchRate || 0) >= 60);
 
-        const map = new Map();
+        const map = new Map<string, MatchResult & { matchRate: number }>();
         enhancedResults.forEach(m => {
             const id = m.player?.player_id;
             if (!id) return;
-            if (!map.has(id) || map.get(id).confidence < m.confidence) {
+            const existingMatch = map.get(id);
+            if (!existingMatch || existingMatch.confidence < m.confidence) {
                 map.set(id, m);
             }
         });
@@ -539,7 +558,7 @@ export default function TournamentAnalysis() {
                                 minScale={0.5}
                                 maxScale={5}
                             >
-                                {({ zoomIn, zoomOut, resetTransform }: any) => (
+                                {({ zoomIn, zoomOut, resetTransform }) => (
                                     <>
                                         <div className="absolute bottom-6 right-6 z-40 flex flex-col gap-2">
                                             <button onClick={() => zoomIn()} className="p-3 bg-white/90 rounded-full shadow-lg hover:bg-white text-gray-700 transition-all"><ZoomIn size={24} /></button>

@@ -2,14 +2,26 @@ import { useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { Lock, Mail, Loader2 } from 'lucide-react';
 
+type AuthError = {
+    message?: string;
+};
+
+const getErrorMessage = (error: unknown) => {
+    if (typeof error === 'object' && error !== null && 'message' in error) {
+        return String((error as AuthError).message ?? '');
+    }
+    return '';
+};
+
 export default function Auth() {
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [message, setMessage] = useState<{ text: string, type: 'error' | 'success' } | null>(null);
 
-    const errorMessageMapper = (error: any) => {
-        const msg = error.message.toLowerCase();
+    const errorMessageMapper = (error: unknown) => {
+        const rawMessage = getErrorMessage(error);
+        const msg = rawMessage.toLowerCase();
         if (msg.includes('invalid login credentials')) {
             return 'メールアドレスまたはパスワードが正しくありません。';
         }
@@ -22,7 +34,7 @@ export default function Auth() {
         if (msg.includes('password should be')) {
             return 'パスワードは6文字以上で入力してください。';
         }
-        return 'エラーが発生しました: ' + error.message;
+        return 'エラーが発生しました: ' + rawMessage;
     };
 
     const handleLogin = async (e: React.FormEvent) => {

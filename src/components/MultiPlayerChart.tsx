@@ -6,6 +6,11 @@ import {
 } from 'recharts';
 import { Loader2, TrendingUp, Presentation } from 'lucide-react';
 
+type ChartDataPoint = {
+    label: string;
+    [playerId: string]: string | number | undefined;
+};
+
 // Generates a consistent color for a given player ID
 const getColor = (_id: string, index: number) => {
     const colors = [
@@ -92,10 +97,10 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                 .select('*')
                 .in('player_id', pIds);
 
-            if (players) {
-                setWatchedPlayers(players as Player[]);
-                // Initialize all players as selected when loaded
-                setSelectedPlayers(new Set((players as Player[]).map(p => p.player_id)));
+                if (players) {
+                    setWatchedPlayers(players as Player[]);
+                    // Initialize all players as selected when loaded
+                    setSelectedPlayers(new Set((players as Player[]).map(p => p.player_id)));
             }
 
             // 3. Fetch Category Rankings (Include Managed Player for matching)
@@ -123,8 +128,8 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                     .select('category')
                     .eq('player_id', activeManagedPlayerId)
                     .single();
-                if (player && !selectedCategory) {
-                    setSelectedCategory(player.category);
+                if (player?.category) {
+                    setSelectedCategory(prev => prev || player.category);
                 }
             }
 
@@ -173,7 +178,7 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
     // Transform 'category_rankings' to a format suitable for Recharts.
     // Each month will have one value per player_id, which is the rank for the selected category.
     const chartDataCategory = useMemo(() => {
-        const map = new Map<string, any>();
+        const map = new Map<string, ChartDataPoint>();
 
         categoryData.forEach(item => {
             if (item.category !== selectedCategory) return;
@@ -206,14 +211,14 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
             const lastDataA = [...chartDataCategory].reverse().find(d => d[a] !== undefined);
             const lastDataB = [...chartDataCategory].reverse().find(d => d[b] !== undefined);
 
-            const rankA = lastDataA ? lastDataA[a] : 999999;
-            const rankB = lastDataB ? lastDataB[b] : 999999;
+            const rankA = Number(lastDataA?.[a] ?? 999999);
+            const rankB = Number(lastDataB?.[b] ?? 999999);
 
             // If ranks are equal, sort by ID to be stable
             if (rankA === rankB) return a.localeCompare(b);
             return rankA - rankB;
         });
-    }, [categoryData, watchedPlayers, hiddenPlayerIds, chartDataCategory]);
+    }, [categoryData, watchedPlayers, hiddenPlayerIds, chartDataCategory, selectedPlayers]);
 
     if (loading) {
         return (
@@ -319,20 +324,23 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                             />
                             <YAxis reversed tick={{ fill: '#6b7280', fontSize: 12 }} tickLine={false} axisLine={false} domain={['dataMin - 1', 'dataMax + 1']} />
                             <Tooltip
-                                content={(props: any) => {
-                                    const { active, payload, label } = props;
+                                content={({ active, payload, label }) => {
                                     if (active && payload && payload.length) {
                                         // Sort by rank value (asc)
-                                        const sortedPayload = [...payload].sort((a, b) => a.value - b.value);
+                                        const sortedPayload = [...payload].sort(
+                                            (a, b) => Number(a.value ?? 0) - Number(b.value ?? 0)
+                                        );
+                                        const labelText = typeof label === 'string' ? label : String(label ?? '');
 
                                         return (
                                             <div className="bg-white/95 backdrop-blur-sm p-3 rounded-xl border border-tennis-green-100 shadow-lg animate-in fade-in zoom-in duration-200">
                                                 <p className="text-[10px] font-bold text-gray-400 mb-2 tracking-wider">
-                                                    {label?.slice(0, 4)}年{label?.slice(4)}月
+                                                    {labelText.slice(0, 4)}年{labelText.slice(4)}月
                                                 </p>
                                                 <div className="space-y-1.5">
-                                                    {sortedPayload.map((entry: any, idx: number) => {
-                                                        const p = watchedPlayers.find(wp => wp.player_id === entry.dataKey);
+                                                    {sortedPayload.map((entry, idx: number) => {
+                                                        const playerId = String(entry.dataKey ?? '');
+                                                        const p = watchedPlayers.find(wp => wp.player_id === playerId);
                                                         const points = p?.ranking_point || 0;
                                                         return (
                                                             <div key={idx} className="flex items-center justify-between gap-4">
@@ -342,11 +350,11 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                                                                         style={{ backgroundColor: entry.color }}
                                                                     />
                                                                     <span className="text-xs font-bold text-gray-700">
-                                                                        {entry.name}
+                                                                        {String(entry.name ?? '')}
                                                                     </span>
                                                                 </div>
                                                                 <span className="text-xs font-black text-tennis-green-600">
-                                                                    {entry.value}位 <span className="text-[10px] font-normal text-gray-400">/ {points.toLocaleString()}pt</span>
+                                                                    {Number(entry.value ?? 0)}位 <span className="text-[10px] font-normal text-gray-400">/ {points.toLocaleString()}pt</span>
                                                                 </span>
                                                             </div>
                                                         );
@@ -381,9 +389,9 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                                         <LabelList
                                             dataKey={playerId}
                                             position="right"
-                                            content={(props: any) => {
-                                                const { x, y, index, value } = props;
+                                            content={({ x, y, index, value }) => {
                                                 if (value === undefined || value === null) return null;
+                                                if (index === undefined || typeof x !== 'number' || typeof y !== 'number') return null;
 
                                                 // Only show label for the last available data point for this specific player
                                                 const isLastPoint = !chartDataCategory.slice(index + 1).some(d => d[playerId] !== undefined);
@@ -407,7 +415,7 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                                                     >
                                                         {surname}
                                                         <tspan dx={6} fill="#6b7280" fontSize={10} fontWeight="normal">
-                                                            {value}位 / {points.toLocaleString()}pt
+                                                            {Number(value)}位 / {points.toLocaleString()}pt
                                                         </tspan>
                                                     </text>
                                                 );

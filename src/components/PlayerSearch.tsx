@@ -20,10 +20,13 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
     const [hiddenPlayerIds, setHiddenPlayerIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
-        setHiddenPlayerIds(new Set());
+        const resetTimer = window.setTimeout(() => {
+            setHiddenPlayerIds(new Set());
+        }, 0);
         window.dispatchEvent(new CustomEvent('player-visibility-changed', {
             detail: { playerType, hiddenIds: [] }
         }));
+        return () => window.clearTimeout(resetTimer);
     }, [playerType, activeManagedPlayerId]);
 
     const handleToggleVisibility = (playerId: string) => {
@@ -115,8 +118,10 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
     // Search DB based on query
     useEffect(() => {
         if (query.trim().length < 2) {
-            setResults([]);
-            return;
+            const clearTimer = window.setTimeout(() => {
+                setResults([]);
+            }, 0);
+            return () => window.clearTimeout(clearTimer);
         }
 
         const searchPlayers = async () => {
@@ -173,7 +178,12 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                 return;
             }
 
-            const insertData: any = {
+            const insertData: {
+                user_id: string;
+                player_id: string;
+                player_type: 'managed' | 'opponent';
+                target_managed_player_id?: string;
+            } = {
                 user_id: session.user.id,
                 player_id: playerId,
                 player_type: playerType
