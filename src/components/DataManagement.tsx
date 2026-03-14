@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Database, Users, Calendar, AlertCircle, Loader2, Table } from 'lucide-react';
+import { Search, Database, Users, Calendar, AlertCircle, Loader2, Table, Star, UserPlus } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import type { Player, CategoryRanking } from '../types/database';
 
@@ -8,13 +8,22 @@ interface DisplayData {
     ranking: CategoryRanking | null;
 }
 
-export default function DataManagement() {
+interface DataManagementProps {
+    initialCategory?: string;
+    initialGender?: string;
+}
+
+export default function DataManagement({ initialCategory, initialGender }: DataManagementProps) {
     const [loading, setLoading] = useState(true);
     const [categories, setCategories] = useState<string[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState('');
     const [displayData, setDisplayData] = useState<DisplayData[]>([]);
     const [yearMonth, setYearMonth] = useState<string>('');
+    const [selectedGender, setSelectedGender] = useState<string>('all');
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [activeManagedPlayerId, setActiveManagedPlayerId] = useState<string | null>(null);
+    const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -27,12 +36,36 @@ export default function DataManagement() {
                 const uniqueCats = Array.from(new Set(data.map(c => c.category))).sort();
                 setCategories(uniqueCats);
                 if (uniqueCats.length > 0) {
-                    setSelectedCategory('U11'); // Default to U11 or first available
+                    setSelectedCategory(initialCategory || 'U11'); 
                 }
             }
         };
+
+        if (initialGender) {
+            setSelectedGender(initialGender);
+        }
+
+        const fetchUserPreferences = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const { data: watched } = await supabase
+                .from('user_watched_players')
+                .select('player_id, player_type')
+                .eq('user_id', session.user.id);
+
+            if (watched) {
+                setWatchedIds(new Set(watched.map(w => w.player_id)));
+                
+                // Also find the active managed player
+                const managed = watched.find(w => w.player_type === 'managed');
+                if (managed) setActiveManagedPlayerId(managed.player_id);
+            }
+        };
+
         fetchCategories();
-    }, []);
+        fetchUserPreferences();
+    }, [initialCategory, initialGender]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -75,21 +108,61 @@ export default function DataManagement() {
         fetchData();
     }, [selectedCategory]);
 
-    const filteredData = displayData.filter(item =>
-        item.player.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.player.team?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const handleAction = async (player: Player, type: 'managed' | 'opponent') => {
+        setActionLoading(`${player.player_id}-${type}`);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            alert('ログインが必要です');
+            setActionLoading(null);
+            return;
+        }
+
+        if (type === 'opponent' && !activeManagedPlayerId) {
+            alert('先にマイダッシュボードで「管理選手」を登録してください。');
+            setActionLoading(null);
+            return;
+        }
+
+        const { error } = await supabase
+            .from('user_watched_players')
+            .insert({
+                user_id: session.user.id,
+                player_id: player.player_id,
+                player_type: type,
+                target_managed_player_id: type === 'opponent' ? activeManagedPlayerId : null
+            });
+
+        if (error) {
+            if (error.code === '23505') {
+                alert('既に登録されています。');
+            } else {
+                alert('エラーが発生しました。');
+            }
+        } else {
+            setWatchedIds(prev => new Set(prev).add(player.player_id));
+            window.dispatchEvent(new CustomEvent('watched-players-changed', { detail: { playerType: type } }));
+            // Success feedback could be improved but keeping it simple for now
+        }
+        setActionLoading(null);
+    };
+
+    const filteredData = displayData.filter(item => {
+        const matchesSearch = item.player.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.player.team?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesGender = selectedGender === 'all' || item.player.gender === selectedGender;
+        return matchesSearch && matchesGender;
+    });
 
     return (
         <div className="space-y-6 container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-tennis-green-100 pb-6">
                 <div>
-                    <h1 className="text-3xl font-bold font-display text-tennis-green-900 flex items-center">
+                    <h1 className="text-3xl font-black font-display text-tennis-green-900 flex items-center tracking-tight">
                         <Database className="mr-3 h-8 w-8 text-tennis-green-600" />
-                        インポートデータ管理
+                        選手名鑑・ランキング表
                     </h1>
-                    <p className="text-tennis-green-600 mt-1">
-                        CSVからインポートされた選手データとランキングをカテゴリー別に閲覧します。
+                    <p className="text-tennis-green-600 font-bold mt-1">
+                        全国の選手データと最新ランキングをカテゴリー別に閲覧できます。
                     </p>
                 </div>
                 <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-tennis-green-100">
@@ -103,7 +176,27 @@ export default function DataManagement() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="glass-panel p-6 shadow-sm flex flex-col gap-4">
                     <label className="text-sm font-bold text-gray-600 flex items-center gap-2">
-                        <Table size={16} /> カテゴリー選択
+                        <Users size={16} /> 性別
+                    </label>
+                    <div className="flex bg-gray-100 p-1 rounded-xl">
+                        {['all', '男子', '女子'].map(g => (
+                            <button
+                                key={g}
+                                onClick={() => setSelectedGender(g)}
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${selectedGender === g
+                                        ? 'bg-white text-tennis-green-600 shadow-sm'
+                                        : 'text-gray-400 hover:text-gray-600'
+                                    }`}
+                            >
+                                {g === 'all' ? 'すべて' : g}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="md:col-span-1 glass-panel p-6 shadow-sm flex flex-col gap-4">
+                    <label className="text-sm font-bold text-gray-600 flex items-center gap-2">
+                        <Table size={16} /> カテゴリー
                     </label>
                     <div className="flex flex-wrap gap-2">
                         {categories.map(cat => (
@@ -121,15 +214,15 @@ export default function DataManagement() {
                     </div>
                 </div>
 
-                <div className="md:col-span-2 glass-panel p-6 shadow-sm flex flex-col gap-4">
+                <div className="md:col-span-1 glass-panel p-6 shadow-sm flex flex-col gap-4">
                     <label className="text-sm font-bold text-gray-600 flex items-center gap-2">
-                        <Search size={16} /> 選手名・所属検索
+                        <Search size={16} /> 選手名・所属
                     </label>
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                         <input
                             type="text"
-                            placeholder="名前またはチーム名を入力..."
+                            placeholder="検索..."
                             className="w-full pl-12 pr-4 py-3 bg-white/50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-tennis-green-500 transition-all font-medium"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -164,6 +257,7 @@ export default function DataManagement() {
                                     <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">所属チーム</th>
                                     <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">ポイント</th>
                                     <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">基本カテゴリ</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">クイック登録</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -194,6 +288,31 @@ export default function DataManagement() {
                                                 }`}>
                                                 {item.player.category}
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <div className="flex items-center justify-center gap-3">
+                                                <button
+                                                    onClick={() => handleAction(item.player, 'opponent')}
+                                                    disabled={watchedIds.has(item.player.player_id) || actionLoading?.startsWith(item.player.player_id)}
+                                                    className={`p-2 rounded-xl transition-all flex items-center gap-1.5 text-[10px] font-black tracking-tighter ${
+                                                        watchedIds.has(item.player.player_id)
+                                                        ? 'bg-gray-100 text-gray-400 cursor-default'
+                                                        : 'bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white shadow-sm'
+                                                    }`}
+                                                    title="ライバル登録"
+                                                >
+                                                    <Star size={14} fill={watchedIds.has(item.player.player_id) ? "currentColor" : "none"} />
+                                                    {watchedIds.has(item.player.player_id) ? '登録済' : 'ライバル'}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleAction(item.player, 'managed')}
+                                                    disabled={actionLoading?.startsWith(item.player.player_id)}
+                                                    className="p-2 bg-tennis-green-50 text-tennis-green-600 rounded-xl hover:bg-tennis-green-600 hover:text-white transition-all shadow-sm group/btn"
+                                                    title="管理選手として追加"
+                                                >
+                                                    <UserPlus size={14} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

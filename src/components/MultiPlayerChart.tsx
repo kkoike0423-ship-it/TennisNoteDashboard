@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import type { Player, CategoryRanking } from '../types/database';
 import {
-    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList
+    Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList, Area, ComposedChart
 } from 'recharts';
 import { Loader2, TrendingUp, Presentation } from 'lucide-react';
 
@@ -42,9 +42,15 @@ interface MultiPlayerChartProps {
     playerType: 'managed' | 'opponent';
     title: string;
     activeManagedPlayerId: string | null;
+    forceSelectedPlayerIds?: string[]; // New prop to force filter to specific IDs
 }
 
-export default function MultiPlayerChart({ playerType, title, activeManagedPlayerId }: MultiPlayerChartProps) {
+export default function MultiPlayerChart({ 
+    playerType, 
+    title, 
+    activeManagedPlayerId,
+    forceSelectedPlayerIds 
+}: MultiPlayerChartProps) {
     const [loading, setLoading] = useState(true);
     const [watchedPlayers, setWatchedPlayers] = useState<Player[]>([]);
     const [selectedPlayers, setSelectedPlayers] = useState<Set<string>>(new Set());
@@ -99,8 +105,12 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
 
                 if (players) {
                     setWatchedPlayers(players as Player[]);
-                    // Initialize all players as selected when loaded
-                    setSelectedPlayers(new Set((players as Player[]).map(p => p.player_id)));
+                    // Initialize selection: if forced, use only those. Otherwise all.
+                    if (forceSelectedPlayerIds && forceSelectedPlayerIds.length > 0) {
+                        setSelectedPlayers(new Set(forceSelectedPlayerIds));
+                    } else {
+                        setSelectedPlayers(new Set((players as Player[]).map(p => p.player_id)));
+                    }
             }
 
             // 3. Fetch Category Rankings (Include Managed Player for matching)
@@ -196,9 +206,17 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
     const playerLines = useMemo(() => {
         const playerIds = new Set<string>();
         categoryData.forEach(item => {
-            if (selectedPlayers.has(item.player_id) && watchedPlayers.some(p => p.player_id === item.player_id)) {
-                if (!hiddenPlayerIds.has(item.player_id)) {
-                    playerIds.add(item.player_id);
+            if (selectedPlayers.has(item.player_id) && !hiddenPlayerIds.has(item.player_id)) {
+                // Determine if we should include this player details based on forceSelectedPlayerIds
+                const isForceFiltered = forceSelectedPlayerIds && forceSelectedPlayerIds.length > 0;
+                const matchesForce = forceSelectedPlayerIds?.includes(item.player_id);
+                const isWatched = watchedPlayers.some(p => p.player_id === item.player_id);
+                const isManaged = item.player_id === activeManagedPlayerId;
+
+                if (isForceFiltered) {
+                    if (matchesForce) playerIds.add(item.player_id);
+                } else if (isWatched || isManaged) {
+                     playerIds.add(item.player_id);
                 }
             }
         });
@@ -244,16 +262,21 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
         <div className="glass-panel p-6 shadow-sm mt-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <div>
-                    <h3 className="text-lg font-bold text-gray-800 flex items-center">
+                    <h3 className="text-lg font-black text-gray-900 flex items-center tracking-tight">
                         <TrendingUp className="mr-2 h-5 w-5 text-tennis-green-600" />
-                        {title} {playerType === 'opponent' && `(${watchedPlayers.length}/10)`}
+                        {title}
+                        {playerType === 'opponent' && (
+                            <span className="ml-2 px-2 py-0.5 bg-tennis-green-100 text-tennis-green-700 text-[10px] rounded-full">
+                                {watchedPlayers.length}/10
+                            </span>
+                        )}
                     </h3>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <span className="text-sm font-medium text-gray-600 whitespace-nowrap">カテゴリー:</span>
+                <div className="flex items-center gap-2 w-full sm:w-auto bg-gray-50 p-1.5 rounded-xl border border-gray-100">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Category</span>
                     <select
-                        className="flex-1 sm:flex-none bg-white border border-tennis-green-200 text-gray-700 py-1.5 px-3 rounded-lg outline-none focus:ring-2 focus:ring-tennis-green-500 text-sm"
+                        className="flex-1 sm:flex-none bg-transparent text-gray-700 py-1 px-2 rounded-lg outline-none text-xs font-bold"
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
                     >
@@ -278,9 +301,9 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                     return (
                         <label
                             key={player.player_id}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm cursor-pointer transition-all duration-200 select-none ${isSelected
-                                    ? 'bg-white shadow-sm border-gray-200'
-                                    : 'bg-gray-50 border-transparent text-gray-400 opacity-70 hover:opacity-100'
+                            className={`flex items-center gap-2 px-4 py-2 rounded-2xl border text-xs cursor-pointer transition-all duration-300 select-none ${isSelected
+                                    ? 'bg-white shadow-md border-gray-100 ring-2 ring-tennis-green-100'
+                                    : 'bg-gray-100/50 border-transparent text-gray-400 opacity-60 hover:opacity-100 hover:bg-gray-100'
                                 }`}
                         >
                             <input
@@ -307,14 +330,22 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
             <div className={`w-full ${playerType === 'managed' ? 'h-[300px] md:h-[400px]' : 'h-[500px] md:h-[700px]'}`}>
                 {chartDataCategory.length > 0 && (
                     <ResponsiveContainer width="100%" height="100%">
-                        {/* Note: reversed Y-axis is standard for Ranks (1 is highest) */}
-                        <LineChart data={chartDataCategory} margin={{ top: 5, right: 140, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                        <ComposedChart data={chartDataCategory} margin={{ top: 20, right: 140, left: 10, bottom: 5 }}>
+                            <defs>
+                                {playerLines.map((playerId, idx) => (
+                                    <linearGradient key={`grad-${playerId}`} id={`color-${playerId}`} x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor={getColor(playerId, idx)} stopOpacity={0.15}/>
+                                        <stop offset="95%" stopColor={getColor(playerId, idx)} stopOpacity={0}/>
+                                    </linearGradient>
+                                ))}
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                             <XAxis
                                 dataKey="label"
-                                tick={{ fill: '#6b7280', fontSize: 12 }}
+                                tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
                                 tickLine={false}
                                 axisLine={false}
+                                dy={10}
                                 tickFormatter={(val) => {
                                     if (typeof val === 'string' && val.length === 6) {
                                         return `${val.slice(2, 4)}/${val.slice(4)}`;
@@ -322,40 +353,51 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                                     return val;
                                 }}
                             />
-                            <YAxis reversed tick={{ fill: '#6b7280', fontSize: 12 }} tickLine={false} axisLine={false} domain={['dataMin - 1', 'dataMax + 1']} />
+                            <YAxis 
+                                reversed 
+                                tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} 
+                                tickLine={false} 
+                                axisLine={false} 
+                                domain={['dataMin - 1', 'dataMax + 1']}
+                                width={30}
+                            />
                             <Tooltip
                                 content={({ active, payload, label }) => {
                                     if (active && payload && payload.length) {
-                                        // Sort by rank value (asc)
-                                        const sortedPayload = [...payload].sort(
+                                        const sortedPayload = [...payload].filter(p => p.type !== 'area').sort(
                                             (a, b) => Number(a.value ?? 0) - Number(b.value ?? 0)
                                         );
                                         const labelText = typeof label === 'string' ? label : String(label ?? '');
 
                                         return (
-                                            <div className="bg-white/95 backdrop-blur-sm p-3 rounded-xl border border-tennis-green-100 shadow-lg animate-in fade-in zoom-in duration-200">
-                                                <p className="text-[10px] font-bold text-gray-400 mb-2 tracking-wider">
-                                                    {labelText.slice(0, 4)}年{labelText.slice(4)}月
+                                            <div className="bg-white/95 backdrop-blur-xl p-4 rounded-3xl border border-white shadow-2xl animate-in fade-in zoom-in duration-200 ring-1 ring-black/5">
+                                                <p className="text-[10px] font-black text-tennis-green-600 mb-3 tracking-widest uppercase">
+                                                    {labelText.slice(0, 4)}.{labelText.slice(4)}
                                                 </p>
-                                                <div className="space-y-1.5">
+                                                <div className="space-y-3">
                                                     {sortedPayload.map((entry, idx: number) => {
                                                         const playerId = String(entry.dataKey ?? '');
                                                         const p = watchedPlayers.find(wp => wp.player_id === playerId);
                                                         const points = p?.ranking_point || 0;
                                                         return (
-                                                            <div key={idx} className="flex items-center justify-between gap-4">
-                                                                <div className="flex items-center gap-2">
+                                                            <div key={idx} className="flex items-center justify-between gap-6">
+                                                                <div className="flex items-center gap-3">
                                                                     <div
-                                                                        className="w-2 h-2 rounded-full"
+                                                                        className="w-2.5 h-2.5 rounded-full ring-2 ring-white shadow-sm"
                                                                         style={{ backgroundColor: entry.color }}
                                                                     />
-                                                                    <span className="text-xs font-bold text-gray-700">
+                                                                    <span className="text-xs font-black text-gray-800">
                                                                         {String(entry.name ?? '')}
                                                                     </span>
                                                                 </div>
-                                                                <span className="text-xs font-black text-tennis-green-600">
-                                                                    {Number(entry.value ?? 0)}位 <span className="text-[10px] font-normal text-gray-400">/ {points.toLocaleString()}pt</span>
-                                                                </span>
+                                                                <div className="text-right">
+                                                                    <p className="text-xs font-black text-gray-900 leading-none">
+                                                                        {Number(entry.value ?? 0)}<span className="text-[8px] ml-0.5">位</span>
+                                                                    </p>
+                                                                    <p className="text-[9px] font-bold text-gray-400 mt-0.5">
+                                                                        {points.toLocaleString()}pt
+                                                                    </p>
+                                                                </div>
                                                             </div>
                                                         );
                                                     })}
@@ -366,11 +408,32 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                                     return null;
                                 }}
                             />
-                            <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                            <Legend 
+                                iconType="circle" 
+                                wrapperStyle={{ paddingTop: '30px', fontSize: '10px', fontWeight: 'bold' }} 
+                            />
+                            
                             {playerLines.map((playerId) => {
                                 const player = watchedPlayers.find(p => p.player_id === playerId);
                                 if (!player) return null;
 
+                                return (
+                                    <Area
+                                        key={`area-${playerId}`}
+                                        type="monotone"
+                                        dataKey={playerId}
+                                        stroke="none"
+                                        fill={`url(#color-${playerId})`}
+                                        connectNulls
+                                        isAnimationActive={true}
+                                        baseValue="dataMax"
+                                    />
+                                );
+                            })}
+
+                            {playerLines.map((playerId) => {
+                                const player = watchedPlayers.find(p => p.player_id === playerId);
+                                if (!player) return null;
                                 const playerIdx = playerLines.indexOf(playerId);
                                 const baseColor = getColor(player.player_id, playerIdx);
 
@@ -381,10 +444,12 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                                         dataKey={playerId}
                                         name={player.full_name || player.last_name || playerId}
                                         stroke={baseColor}
-                                        strokeWidth={3}
-                                        dot={{ r: 4, strokeWidth: 2 }}
-                                        activeDot={{ r: 6 }}
+                                        strokeWidth={4}
+                                        dot={{ r: 4, strokeWidth: 3, fill: '#fff', stroke: baseColor }}
+                                        activeDot={{ r: 8, strokeWidth: 0, fill: baseColor }}
                                         connectNulls
+                                        animationDuration={1500}
+                                        animationEasing="ease-in-out"
                                     >
                                         <LabelList
                                             dataKey={playerId}
@@ -393,38 +458,44 @@ export default function MultiPlayerChart({ playerType, title, activeManagedPlaye
                                                 if (value === undefined || value === null) return null;
                                                 if (index === undefined || typeof x !== 'number' || typeof y !== 'number') return null;
 
-                                                // Only show label for the last available data point for this specific player
                                                 const isLastPoint = !chartDataCategory.slice(index + 1).some(d => d[playerId] !== undefined);
                                                 if (!isLastPoint) return null;
 
-                                                // Extract surname (first part of full_name or last_name)
                                                 const fullName = player.full_name || player.last_name || "";
                                                 const surname = fullName.split(' ')[0] || fullName.split('　')[0] || fullName;
 
-                                                // Get the player's current points
-                                                const points = player.ranking_point || 0;
-
                                                 return (
-                                                    <text
-                                                        x={x + 10}
-                                                        y={y + 4}
-                                                        fill={baseColor}
-                                                        fontSize={12}
-                                                        fontWeight="bold"
-                                                        className="drop-shadow-sm"
-                                                    >
-                                                        {surname}
-                                                        <tspan dx={6} fill="#6b7280" fontSize={10} fontWeight="normal">
-                                                            {Number(value)}位 / {points.toLocaleString()}pt
-                                                        </tspan>
-                                                    </text>
+                                                    <g>
+                                                        <rect 
+                                                            x={x + 10} 
+                                                            y={y - 12} 
+                                                            width={90} 
+                                                            height={24} 
+                                                            rx={12} 
+                                                            fill="white" 
+                                                            className="shadow-sm" 
+                                                            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.05))' }}
+                                                        />
+                                                        <text
+                                                            x={x + 20}
+                                                            y={y + 4}
+                                                            fill={baseColor}
+                                                            fontSize={11}
+                                                            fontWeight="900"
+                                                        >
+                                                            {surname}
+                                                            <tspan dx={6} fill="#94a3b8" fontSize={9} fontWeight="bold">
+                                                                {Number(value)}位
+                                                            </tspan>
+                                                        </text>
+                                                    </g>
                                                 );
                                             }}
                                         />
                                     </Line>
                                 );
                             })}
-                        </LineChart>
+                        </ComposedChart>
                     </ResponsiveContainer>
                 )}
 

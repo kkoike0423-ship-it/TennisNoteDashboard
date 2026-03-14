@@ -7,13 +7,15 @@ import PlayerSearch from './components/PlayerSearch';
 import MultiPlayerChart from './components/MultiPlayerChart';
 import TournamentAnalysis from './components/TournamentAnalysis';
 import DataManagement from './components/DataManagement';
-import { Trash2, Users, UserCheck, Menu, X, LogOut, Upload, BarChart3, Search, Database, Download } from 'lucide-react';
+import ScoutHub from './components/ScoutHub';
+import { Trash2, Menu, X, LogOut, Upload, BarChart3, Search, Database, Download, Presentation, ChevronRight } from 'lucide-react';
 import type { Player } from './types/database';
 
 function App() {
   const apkDownloadUrl = import.meta.env.VITE_ANDROID_APK_URL || 'https://ubuophysnullisrzyulj.supabase.co/storage/v1/object/public/TennisNote/app-release.apk';
   const [session, setSession] = useState<Session | null>(null);
-  const [activeMenu, setActiveMenu] = useState<'overview' | 'import' | 'draw' | 'data'>('overview');
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [activeMenu, setActiveMenu] = useState<'overview' | 'scout' | 'import' | 'draw' | 'data'>('data');
   const [managedPlayers, setManagedPlayers] = useState<Player[]>([]);
   const [activeManagedPlayerId, setActiveManagedPlayerId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -23,12 +25,21 @@ function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session) {
+        setActiveMenu('overview');
+      } else {
+        setActiveMenu('data');
+      }
+      setIsAuthLoading(false);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session && activeMenu === 'data') {
+        setActiveMenu('overview');
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -47,14 +58,14 @@ function App() {
 
     if (watchedRecords && watchedRecords.length > 0) {
       const pIds = watchedRecords.map(w => w.player_id);
-      const { data: players } = await supabase
+      const { data: playersDetail } = await supabase
         .from('players')
         .select('*')
         .in('player_id', pIds);
 
-      if (players) {
+      if (playersDetail) {
         // Maintain the sort order from watchedRecords (most recent first)
-        const sortedPlayers = pIds.map(id => players.find(p => p.player_id === id)).filter(Boolean) as Player[];
+        const sortedPlayers = pIds.map(id => playersDetail.find(p => p.player_id === id)).filter(Boolean) as Player[];
         setManagedPlayers(sortedPlayers);
 
         // If no active selection yet, or the selection is no longer in the list, set to the latest
@@ -99,7 +110,6 @@ function App() {
         void fetchManagedPlayers();
       }, 0);
 
-      // Listen for managed player registration events to refresh the dropdown
       const handleRefresh = (e: Event) => {
         const detail = (e as CustomEvent).detail;
         if (detail?.playerType === 'managed') {
@@ -113,6 +123,14 @@ function App() {
       };
     }
   }, [session, fetchManagedPlayers]);
+
+  if (isAuthLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-tennis-green-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tennis-green-600"></div>
+      </div>
+    );
+  }
 
   if (!session) {
     return <Auth />;
@@ -128,7 +146,7 @@ function App() {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Persistent on Desktop, Drawer on Mobile */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 w-64 bg-white border-r border-tennis-green-100 flex flex-col transition-all duration-300 z-40
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -150,236 +168,211 @@ function App() {
 
         <nav className="flex-1 px-4 py-6 space-y-2">
           <button
-            onClick={() => {
-              setActiveMenu('overview');
-              setIsSidebarOpen(false);
-            }}
-            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'overview'
-              ? 'bg-tennis-green-50 text-tennis-green-700'
-              : 'text-gray-600 hover:bg-tennis-green-50 hover:text-tennis-green-700'
-              }`}
+            onClick={() => { setActiveMenu('overview'); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'overview' ? 'bg-tennis-green-50 text-tennis-green-700' : 'text-gray-600 hover:bg-tennis-green-50'}`}
           >
             <BarChart3 className="w-5 h-5 mr-3" />
-            分析ダッシュボード
+            マイダッシュボード
           </button>
 
           <button
-            onClick={() => {
-              setActiveMenu('draw');
-              setIsSidebarOpen(false);
-            }}
-            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'draw'
-              ? 'bg-tennis-green-50 text-tennis-green-700'
-              : 'text-gray-600 hover:bg-tennis-green-50 hover:text-tennis-green-700'
-              }`}
+            onClick={() => { setActiveMenu('scout'); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'scout' ? 'bg-tennis-green-50 text-tennis-green-700' : 'text-gray-600 hover:bg-tennis-green-50'}`}
           >
             <Search className="w-5 h-5 mr-3" />
-            <span className="flex items-center gap-1.5">
-              ドロー分析
-              <span className="text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded border border-red-100 font-bold">β版</span>
-            </span>
+            スカウト
           </button>
 
-          {session?.user?.email === 'kkoike0423@gmail.com' && (
-            <button
-              onClick={() => {
-                setActiveMenu('data');
-                setIsSidebarOpen(false);
-              }}
-              className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'data'
-                ? 'bg-tennis-green-50 text-tennis-green-700'
-                : 'text-gray-600 hover:bg-tennis-green-50 hover:text-tennis-green-700'
-                }`}
-            >
-              <Database className="w-5 h-5 mr-3" />
-              データ管理
-            </button>
-          )}
+          <button
+            onClick={() => { setActiveMenu('data'); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'data' ? 'bg-tennis-green-50 text-tennis-green-700' : 'text-gray-600 hover:bg-tennis-green-50'}`}
+          >
+            <Database className="w-5 h-5 mr-3" />
+            選手検索・順位表
+          </button>
 
-          {session?.user?.email === 'kkoike0423@gmail.com' && (
-            <button
-              onClick={() => {
-                setActiveMenu('import');
-                setIsSidebarOpen(false);
-              }}
-              className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'import'
-                ? 'bg-tennis-green-50 text-tennis-green-700'
-                : 'text-gray-600 hover:bg-tennis-green-50 hover:text-tennis-green-700'
-                }`}
-            >
-              <Upload className="w-5 h-5 mr-3" />
-              CSVデータ取込
-            </button>
-          )}
+          <button
+            onClick={() => { setActiveMenu('draw'); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'draw' ? 'bg-tennis-green-50 text-tennis-green-700' : 'text-gray-600 hover:bg-tennis-green-50'}`}
+          >
+            <Presentation className="w-5 h-5 mr-3" />
+            ドロー分析
+          </button>
+
+          <div className="my-4 border-t border-gray-100 pt-4">
+            {session?.user?.email === 'kkoike0423@gmail.com' && (
+              <>
+                <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Admin Tools</p>
+                <button
+                  onClick={() => { setActiveMenu('import'); setIsSidebarOpen(false); }}
+                  className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'import' ? 'bg-tennis-green-50 text-tennis-green-700' : 'text-gray-600 hover:bg-tennis-green-50'}`}
+                >
+                  <Upload className="w-5 h-5 mr-3" />
+                  CSV取込
+                </button>
+              </>
+            )}
+          </div>
         </nav>
 
         <div className="p-4 border-t border-tennis-green-100 space-y-4">
-          <div className="bg-white border border-tennis-green-100 p-3 rounded-xl shadow-sm">
-            <p className="text-[10px] text-tennis-green-600 mb-2 font-bold">Androidアプリ</p>
-            {apkDownloadUrl ? (
-              <a
-                href={apkDownloadUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center w-full rounded-lg bg-tennis-green-500 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-tennis-green-600 shadow-sm"
-              >
-                <Download size={14} className="mr-1.5" />
-                APKをダウンロード
+           {apkDownloadUrl && (
+              <a href={apkDownloadUrl} className="flex items-center gap-3 px-4 py-2 text-xs font-bold text-tennis-green-600 bg-tennis-green-50 rounded-xl hover:bg-tennis-green-100 transition-colors">
+                <Download size={16} /> APK Download
               </a>
-            ) : (
-              <div className="rounded-lg border border-dashed border-tennis-green-200 px-3 py-2 text-center text-[10px] text-gray-500 w-full">
-                APKリンク未設定
-              </div>
-            )}
-          </div>
-
-          <div className="bg-tennis-green-50 p-3 rounded-xl flex flex-col items-center">
-            <p className="text-[10px] text-tennis-green-600 mb-2 font-bold">WEB版をシェア</p>
-            <img
-              src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://tennis-note-dashboard.vercel.app"
-              alt="QR Code"
-              className="w-24 h-24 rounded shadow-sm border border-white"
-            />
-          </div>
+           )}
           <button
             onClick={() => supabase.auth.signOut()}
-            className="flex items-center w-full px-4 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="flex items-center w-full px-4 py-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm"
           >
-            <LogOut className="w-5 h-5 mr-3" />
+            <LogOut className="w-4 h-4 mr-3" />
             ログアウト
           </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-tennis-green-100 flex items-center justify-between px-4 lg:px-8 z-10">
-          <div className="flex items-center gap-3">
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10 bg-white">
+        <header className="h-16 lg:h-20 flex items-center justify-between px-6 border-b border-gray-50 bg-white z-20">
+          <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 text-gray-600 hover:bg-tennis-green-50 rounded-lg transition-colors"
+              className="lg:hidden p-2 -ml-2 text-gray-400 hover:bg-gray-50 rounded-full"
             >
               <Menu size={24} />
             </button>
-            <h2 className="text-lg lg:text-xl font-semibold text-gray-800 truncate">
-              {activeMenu === 'overview' ? '分析ダッシュボード' :
-                activeMenu === 'draw' ? 'ドロー分析' :
-                  activeMenu === 'data' ? 'データ管理' : 'CSVデータ取込'}
-            </h2>
+            <h1 className="text-xl font-black text-gray-800 tracking-tight">
+              {activeMenu === 'overview' ? 'My Dash' :
+                activeMenu === 'scout' ? 'Scouting' :
+                  activeMenu === 'draw' ? 'Draw Analysis' :
+                    activeMenu === 'data' ? 'Player Directory' : 'Settings'}
+            </h1>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm border border-tennis-green-200 bg-tennis-green-50 text-tennis-green-700 px-3 py-1 rounded-full font-medium">
-              {session.user.email}
-            </span>
+          
+          <div className="flex items-center gap-3">
+             <div className="flex flex-col items-end hidden sm:block">
+                <p className="text-[10px] font-bold text-gray-400 leading-none">Logged in as</p>
+                <p className="text-xs font-bold text-tennis-green-700">{session.user.email?.split('@')[0]}</p>
+             </div>
+             <div className="w-8 h-8 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-700 font-bold border-2 border-white shadow-sm">
+                {session.user.email?.[0].toUpperCase()}
+             </div>
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-4 lg:p-8 z-10 relative">
-          <div className="max-w-6xl mx-auto space-y-6">
-            {activeMenu === 'import' && <DashboardOverview />}
-            {activeMenu === 'draw' && <TournamentAnalysis />}
-            {activeMenu === 'data' && <DataManagement />}
-
+        <div className="flex-1 overflow-auto p-4 lg:p-10 pb-24 lg:pb-10 relative">
+          <div className="max-w-4xl mx-auto z-10 relative">
             {activeMenu === 'overview' && (
-              <div className="space-y-12">
-                {/* Managed Player Selection Section */}
-                <section className="glass-panel p-6 shadow-sm border-l-4 border-l-tennis-green-500">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-700">
-                        <Users size={24} />
+              <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="flex items-center justify-between bg-tennis-green-900 text-white p-6 rounded-[2rem] shadow-xl overflow-hidden relative">
+                   <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+                   <div className="relative z-10">
+                      <p className="text-tennis-green-300 text-[10px] font-black uppercase tracking-widest mb-1">Monitoring Player</p>
+                      <div className="flex items-center gap-3 group relative">
+                        <select
+                          className="bg-transparent text-2xl font-black outline-none appearance-none cursor-pointer pr-8"
+                          value={activeManagedPlayerId || ''}
+                          onChange={(e) => setActiveManagedPlayerId(e.target.value)}
+                        >
+                          {managedPlayers.length === 0 ? (
+                            <option value="">登録なし</option>
+                          ) : (
+                            managedPlayers.map(p => (
+                              <option key={p.player_id} value={p.player_id} className="text-gray-800 text-lg">
+                                {p.last_name} 選手
+                              </option>
+                            ))
+                          )}
+                        </select>
+                        <ChevronRight className="text-tennis-green-400 rotate-90 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none group-hover:scale-110 transition-transform" size={20} />
                       </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-800">管理対象の選手を選択</h3>
-                        <p className="text-sm text-gray-500">切り替えることで、それぞれの対戦相手を表示します</p>
-                      </div>
-                    </div>
+                   </div>
+                   <button 
+                    onClick={handleDeleteManagedPlayer}
+                    className="relative z-10 w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 hover:bg-rose-500 hover:border-rose-400 transition-all shadow-sm"
+                   >
+                      <Trash2 className="text-white" size={20} />
+                   </button>
+                </div>
 
-                    <div className="flex items-center gap-3">
-                      <select
-                        className="bg-white border border-tennis-green-200 text-gray-700 py-2 px-4 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-tennis-green-500 appearance-none min-w-[200px]"
-                        value={activeManagedPlayerId || ''}
-                        onChange={(e) => setActiveManagedPlayerId(e.target.value)}
-                        disabled={managedPlayers.length === 0}
-                      >
-                        {managedPlayers.length === 0 ? (
-                          <option value="">登録選手なし</option>
-                        ) : (
-                          managedPlayers.map(p => (
-                            <option key={p.player_id} value={p.player_id}>
-                              {p.full_name || `${p.last_name} ${p.first_name}`} ({p.player_id})
-                            </option>
-                          ))
-                        )}
-                      </select>
-                      <div className="pointer-events-none -ml-10 z-10 text-tennis-green-600">
-                        ▼
-                      </div>
-                      <button
-                        onClick={handleDeleteManagedPlayer}
-                        disabled={!activeManagedPlayerId}
-                        className="ml-2 p-2.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-rose-100 bg-white"
-                        title="この管理選手を削除"
-                      >
-                        <Trash2 size={20} />
-                      </button>
-                    </div>
-                  </div>
-                </section>
-
-                <div className="grid grid-cols-1 gap-12">
-                  <MultiPlayerChart
+                <div className="grid grid-cols-1 gap-6">
+                   <MultiPlayerChart
                     playerType="managed"
-                    title="管理選手"
-                    activeManagedPlayerId={activeManagedPlayerId}
-                  />
-                  <PlayerSearch
-                    playerType="managed"
-                    title="管理選手を検索・登録・削除"
+                    title="ランキング推移"
                     activeManagedPlayerId={activeManagedPlayerId}
                   />
                 </div>
 
-                {activeManagedPlayerId ? (
-                  <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-700">
-                        <UserCheck size={24} />
-                      </div>
-                      <h2 className="text-2xl font-bold text-gray-800">
-                        「{activeManagedPlayer?.last_name || '選手'}」の対戦相手分析
-                      </h2>
-                    </div>
-                    <div className="space-y-8">
-                      <MultiPlayerChart
-                        playerType="opponent"
-                        title="対戦相手の推移比較"
-                        activeManagedPlayerId={activeManagedPlayerId}
-                      />
-                      <PlayerSearch
-                        playerType="opponent"
-                        title={`「${managedPlayers.find(p => p.player_id === activeManagedPlayerId)?.last_name}」の対戦相手を検索・登録・削除`}
-                        activeManagedPlayerId={activeManagedPlayerId}
-                      />
-                    </div>
-                  </section>
-                ) : (
-                  <div className="text-center py-20 bg-white/30 rounded-2xl border-2 border-dashed border-gray-200">
-                    <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-600">管理選手が選択されていません</h3>
-                    <p className="text-gray-500 mt-2">上のプルダウンから選手を選択するか、新しく登録してください</p>
-                  </div>
-                )}
+                <PlayerSearch
+                  playerType="managed"
+                  title="管理選手を追加・削除"
+                  activeManagedPlayerId={activeManagedPlayerId}
+                />
               </div>
             )}
+
+            {activeMenu === 'scout' && (
+               <ScoutHub activeManagedPlayerId={activeManagedPlayerId} />
+            )}
+
+            {activeMenu === 'draw' && <TournamentAnalysis />}
+            {activeMenu === 'data' && (
+              <DataManagement 
+                initialCategory={activeManagedPlayer?.category} 
+                initialGender={activeManagedPlayer?.gender} 
+              />
+            )}
+            {activeMenu === 'import' && <DashboardOverview />}
+          </div>
+
+          <div className="fixed top-0 right-0 w-full h-full overflow-hidden pointer-events-none z-0">
+            <div className="absolute -top-[10%] -right-[5%] w-[40%] h-[40%] rounded-full bg-gradient-to-br from-tennis-green-100 to-transparent opacity-40 blur-3xl"></div>
+            <div className="absolute bottom-[5%] -left-[5%] w-[30%] h-[30%] rounded-full bg-gradient-to-tr from-tennis-green-50 to-transparent opacity-30 blur-3xl"></div>
           </div>
         </div>
 
-        {/* Decorative background for main area */}
-        <div className="absolute top-0 right-0 w-full h-full overflow-hidden pointer-events-none z-0">
-          <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-gradient-to-br from-tennis-green-100 to-transparent opacity-60 blur-3xl mix-blend-multiply"></div>
-          <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-gradient-to-tr from-tennis-green-200 to-transparent opacity-40 blur-3xl mix-blend-multiply"></div>
-        </div>
+        {/* Mobile Bottom Navigation */}
+        <nav className="lg:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-xl border-t border-gray-100 px-6 py-2 flex items-center justify-between z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-[1.5rem]">
+          <button
+            onClick={() => setActiveMenu('overview')}
+            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 ${activeMenu === 'overview' ? 'text-tennis-green-600 scale-110 font-bold' : 'text-gray-400'}`}
+          >
+            <BarChart3 size={24} strokeWidth={activeMenu === 'overview' ? 2.5 : 2} />
+            <span className="text-[10px]">ホーム</span>
+          </button>
+
+          <button
+            onClick={() => setActiveMenu('scout')}
+            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 ${activeMenu === 'scout' ? 'text-tennis-green-600 scale-110 font-bold' : 'text-gray-400'}`}
+          >
+            <Search size={24} strokeWidth={activeMenu === 'scout' ? 2.5 : 2} />
+            <span className="text-[10px]">スカウト</span>
+          </button>
+
+          <button
+            onClick={() => setActiveMenu('data')}
+            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 ${activeMenu === 'data' ? 'text-tennis-green-600 scale-110 font-bold' : 'text-gray-400'}`}
+          >
+            <Database size={24} strokeWidth={activeMenu === 'data' ? 2.5 : 2} />
+            <span className="text-[10px]">名鑑</span>
+          </button>
+
+          <button
+            onClick={() => setActiveMenu('draw')}
+            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 ${activeMenu === 'draw' ? 'text-tennis-green-600 scale-110 font-bold' : 'text-gray-400'}`}
+          >
+            <Presentation size={24} strokeWidth={activeMenu === 'draw' ? 2.5 : 2} />
+            <span className="text-[10px]">ドロー</span>
+          </button>
+          
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="flex flex-col items-center gap-1 transition-all flex-1 py-1 text-gray-400"
+          >
+            <Menu size={24} />
+            <span className="text-[10px]">その他</span>
+          </button>
+        </nav>
       </main>
     </div>
   );
