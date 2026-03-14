@@ -194,30 +194,38 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                 {/* Search Results Overlay */}
                 {searchResults.length > 0 && (
                     <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-xl border border-tennis-green-100 overflow-hidden z-30 max-h-[60vh] overflow-y-auto">
-                        {searchResults.map(player => (
-                            <div key={player.player_id} className="p-4 flex items-center justify-between hover:bg-tennis-green-50 transition-colors border-b border-gray-50 last:border-none">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-600 font-bold">
-                                        {player.last_name?.[0] || <User size={20} />}
+                        {searchResults.map(player => {
+                            const isManaged = player.player_id === activeManagedPlayerId;
+                            const isAlreadyRival = rivals.some(r => r.player_id === player.player_id);
+                            
+                            return (
+                                <div key={player.player_id} className="p-4 flex items-center justify-between hover:bg-tennis-green-50 transition-colors border-b border-gray-50 last:border-none">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-600 font-bold">
+                                            {player.last_name?.[0] || <User size={20} />}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-gray-800">
+                                                {player.full_name}
+                                                {isManaged && <span className="ml-2 text-[8px] bg-tennis-green-100 text-tennis-green-600 px-1 py-0.5 rounded">管理選手</span>}
+                                            </p>
+                                            <p className="text-xs text-gray-500">{player.team} | {player.category}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-bold text-gray-800">{player.full_name}</p>
-                                        <p className="text-xs text-gray-500">{player.team} | {player.category}</p>
-                                    </div>
+                                    <button
+                                        onClick={() => !isManaged && handleAddRival(player)}
+                                        disabled={isManaged || actionLoading === player.player_id || isAlreadyRival}
+                                        className={`p-2 rounded-full transition-all ${
+                                            isManaged || isAlreadyRival
+                                                ? 'text-tennis-green-500 bg-tennis-green-50 cursor-default opacity-50'
+                                                : 'text-gray-400 hover:text-tennis-green-600 hover:bg-tennis-green-50'
+                                        }`}
+                                    >
+                                        {isAlreadyRival ? <Star size={24} fill="currentColor" /> : <UserPlus size={24} />}
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => handleAddRival(player)}
-                                    disabled={actionLoading === player.player_id || rivals.some(r => r.player_id === player.player_id)}
-                                    className={`p-2 rounded-full transition-all ${
-                                        rivals.some(r => r.player_id === player.player_id)
-                                            ? 'text-tennis-green-500 bg-tennis-green-50 cursor-default'
-                                            : 'text-gray-400 hover:text-tennis-green-600 hover:bg-tennis-green-50'
-                                    }`}
-                                >
-                                    {rivals.some(r => r.player_id === player.player_id) ? <Star size={24} fill="currentColor" /> : <UserPlus size={24} />}
-                                </button>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -238,8 +246,28 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                                 <Loader2 className="animate-spin mb-2" />
                                 <p className="text-sm">読み込み中...</p>
                             </div>
-                        ) : rivals.length > 0 ? (
+                        ) : (
                             <div className="grid grid-cols-1 gap-3">
+                                {/* Always show managed player at the top */}
+                                {managedPlayer && (
+                                    <div className="p-4 bg-tennis-green-50/50 rounded-2xl border-2 border-tennis-green-200 flex items-center justify-between relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 py-1 px-3 bg-tennis-green-200 text-tennis-green-700 text-[8px] font-black rounded-bl-xl">管理選手 (自分)</div>
+                                        <div className="flex items-center gap-4 text-left">
+                                            <div className="w-12 h-12 rounded-full bg-white border-2 border-tennis-green-200 flex items-center justify-center text-tennis-green-600 font-bold text-xl">
+                                                {managedPlayer.last_name?.[0] || '我'}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-gray-800 text-lg">{managedPlayer.full_name}</p>
+                                                <p className="text-sm text-gray-500">{managedPlayer.team || '所属なし'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-bold text-tennis-green-700">{managedPlayer.ranking_point.toLocaleString()} <span className="text-[10px]">pt</span></p>
+                                            <p className="text-[10px] text-gray-400 line-clamp-1">{managedPlayer.category}</p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {rivals.map(rival => (
                                     <button
                                         key={rival.player_id}
@@ -248,7 +276,7 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                                     >
                                         <div className="flex items-center gap-4 text-left">
                                             <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-xl">
-                                                {rival.last_name?.[0] || '選手'}
+                                                {rival.last_name?.[0] || '選'}
                                             </div>
                                             <div>
                                                 <p className="font-bold text-gray-800 text-lg">{rival.full_name}</p>
@@ -264,14 +292,16 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                                         </div>
                                     </button>
                                 ))}
-                            </div>
-                        ) : (
-                            <div className="py-20 bg-white/50 rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center px-6">
-                                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-400">
-                                    <Search size={32} />
-                                </div>
-                                <h4 className="text-lg font-bold text-gray-700">ライバルが未登録です</h4>
-                                <p className="text-sm text-gray-500 mt-2">上の検索窓から選手を探して、<br/>☆アイコンをタップして登録しましょう。</p>
+
+                                {rivals.length === 0 && !loading && (
+                                    <div className="py-14 bg-white/50 rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center px-6">
+                                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-300">
+                                            <Search size={24} />
+                                        </div>
+                                        <h4 className="text-sm font-bold text-gray-500">ライバルが未登録です</h4>
+                                        <p className="text-xs text-gray-400 mt-1">上の検索窓から選手を登録しましょう。</p>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
