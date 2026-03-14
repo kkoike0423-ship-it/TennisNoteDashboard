@@ -248,26 +248,6 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 gap-3">
-                                {/* Always show managed player at the top */}
-                                {managedPlayer && (
-                                    <div className="p-4 bg-tennis-green-50/50 rounded-2xl border-2 border-tennis-green-200 flex items-center justify-between relative overflow-hidden group">
-                                        <div className="absolute top-0 right-0 py-1 px-3 bg-tennis-green-200 text-tennis-green-700 text-[8px] font-black rounded-bl-xl shadow-sm">基準: 管理選手 (自分)</div>
-                                        <div className="flex items-center gap-4 text-left">
-                                            <div className="w-12 h-12 rounded-full bg-white border-2 border-tennis-green-200 flex items-center justify-center text-tennis-green-600 font-bold text-xl shadow-inner">
-                                                {managedPlayer.last_name?.[0] || '我'}
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-gray-800 text-lg">{managedPlayer.full_name}</p>
-                                                <p className="text-sm text-gray-500 font-medium">{managedPlayer.team || '所属なし'}</p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-black text-tennis-green-700">{managedPlayer.ranking_point.toLocaleString()} <span className="text-[10px]">pt</span></p>
-                                            <p className="text-[10px] text-gray-400 font-bold">{managedPlayer.category}</p>
-                                        </div>
-                                    </div>
-                                )}
-
                                 {rivals.map(rival => (
                                     <button
                                         key={rival.player_id}
