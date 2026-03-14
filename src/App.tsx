@@ -19,6 +19,7 @@ function App() {
   const [managedPlayers, setManagedPlayers] = useState<Player[]>([]);
   const [activeManagedPlayerId, setActiveManagedPlayerId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [fontSize, setFontSize] = useState<'normal' | 'large' | 'xlarge'>('large');
 
   const activeManagedPlayer = managedPlayers.find(p => p.player_id === activeManagedPlayerId);
 
@@ -221,6 +222,22 @@ function App() {
                 <Download size={16} /> APK Download
               </a>
            )}
+           
+           <div className="px-4 py-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">文字サイズ</p>
+              <div className="flex bg-gray-50 p-1 rounded-lg border border-gray-100">
+                {(['normal', 'large', 'xlarge'] as const).map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setFontSize(size)}
+                    className={`flex-1 py-1 text-xs font-bold rounded-md transition-all ${fontSize === size ? 'bg-white text-tennis-green-600 shadow-sm' : 'text-gray-400'}`}
+                  >
+                    {size === 'normal' ? '中' : size === 'large' ? '大' : '特大'}
+                  </button>
+                ))}
+              </div>
+           </div>
+
           <button
             onClick={() => supabase.auth.signOut()}
             className="flex items-center w-full px-4 py-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm"
@@ -250,6 +267,19 @@ function App() {
           </div>
           
           <div className="flex items-center gap-3">
+             {/* Desktop Font Toggle */}
+             <div className="hidden sm:flex bg-gray-50 p-1 rounded-xl border border-gray-100 mr-2">
+                {(['normal', 'large', 'xlarge'] as const).map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setFontSize(size)}
+                    className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${fontSize === size ? 'bg-white text-tennis-green-600 shadow-sm' : 'text-gray-400'}`}
+                  >
+                    {size === 'normal' ? 'A' : size === 'large' ? 'A+' : 'A++'}
+                  </button>
+                ))}
+             </div>
+
              <div className="flex flex-col items-end hidden sm:block">
                 <p className="text-[10px] font-bold text-gray-400 leading-none">Logged in as</p>
                 <p className="text-xs font-bold text-tennis-green-700">{session.user.email?.split('@')[0]}</p>
@@ -260,7 +290,9 @@ function App() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-4 lg:p-10 pb-24 lg:pb-10 relative">
+        <div className={`flex-1 overflow-auto p-4 lg:p-10 pb-24 lg:pb-10 relative ${
+          fontSize === 'large' ? 'text-lg' : fontSize === 'xlarge' ? 'text-xl' : 'text-base'
+        }`}>
           <div className="max-w-4xl mx-auto z-10 relative">
             {activeMenu === 'overview' && (
               <div className="space-y-8 animate-in fade-in duration-500">
