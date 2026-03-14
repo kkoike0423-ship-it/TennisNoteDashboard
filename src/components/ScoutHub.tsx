@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { Search, UserPlus, Star, Loader2, User, Trash2, BarChart3 } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { useState, useEffect } from "react";
+import { Search, UserPlus, Star, Loader2, User, Trash2 } from "lucide-react";
+import { supabase } from "../utils/supabaseClient";
 import MultiPlayerChart from "./MultiPlayerChart";
 
 interface Player {
@@ -24,6 +24,7 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
     const [managedPlayer, setManagedPlayer] = useState<Player | null>(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [hiddenRivalIds, setHiddenRivalIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (activeManagedPlayerId) {
@@ -47,15 +48,20 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
     const fetchRivals = async () => {
         setLoading(true);
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
             const { data: watchedData, error: watchedError } = await supabase
-                .from("watched_players")
+                .from("user_watched_players")
                 .select("player_id")
-                .eq("managed_player_id", activeManagedPlayerId);
+                .eq("user_id", session.user.id)
+                .eq("target_managed_player_id", activeManagedPlayerId)
+                .eq("player_type", "opponent");
 
             if (watchedError) throw watchedError;
 
             if (watchedData && watchedData.length > 0) {
-                const rivalIds = watchedData.map(w => w.player_id);
+                const rivalIds = watchedData.map((w: { player_id: string }) => w.player_id);
                 const { data: playersData, error: playersError } = await supabase
                     .from("players")
                     .select("*")
@@ -93,21 +99,28 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
 
     const handleAddRival = async (player: Player) => {
         if (!activeManagedPlayerId) return;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
         setActionLoading(player.player_id);
 
         try {
             const { error } = await supabase
-                .from("watched_players")
+                .from("user_watched_players")
                 .insert({
-                    managed_player_id: activeManagedPlayerId,
-                    player_id: player.player_id
+                    user_id: session.user.id,
+                    target_managed_player_id: activeManagedPlayerId,
+                    player_id: player.player_id,
+                    player_type: 'opponent'
                 });
 
             if (error) throw error;
             
             setRivals(prev => [...prev, player]);
-            setSearchQuery("");
-            setSearchResults([]);
+            // Removed clearing of search results to allow immediate toggle
+            
+            // Notify other components
+            window.dispatchEvent(new CustomEvent('watched-players-changed', { detail: { playerType: 'opponent' } }));
         } catch (error) {
             console.error("Error adding rival:", error);
         } finally {
@@ -115,20 +128,47 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
         }
     };
 
+    const handleToggleVisibility = (playerId: string) => {
+        setHiddenRivalIds(prev => {
+            const next = new Set(prev);
+            if (next.has(playerId)) {
+                next.delete(playerId);
+            } else {
+                next.add(playerId);
+            }
+            // Emit event to notify MultiPlayerChart
+            window.dispatchEvent(new CustomEvent('player-visibility-changed', { 
+                detail: { playerType: 'opponent', hiddenIds: Array.from(next) } 
+            }));
+            return next;
+        });
+    };
+
     const handleRemoveRival = async (rivalId: string) => {
         if (!activeManagedPlayerId) return;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        setActionLoading(rivalId);
         
         try {
             const { error } = await supabase
-                .from("watched_players")
+                .from("user_watched_players")
                 .delete()
-                .eq("managed_player_id", activeManagedPlayerId)
-                .eq("player_id", rivalId);
+                .eq("user_id", session.user.id)
+                .eq("target_managed_player_id", activeManagedPlayerId)
+                .eq("player_id", rivalId)
+                .eq("player_type", 'opponent');
 
             if (error) throw error;
             setRivals(prev => prev.filter(r => r.player_id !== rivalId));
+
+            // Notify other components
+            window.dispatchEvent(new CustomEvent('watched-players-changed', { detail: { playerType: 'opponent' } }));
         } catch (error) {
             console.error("Error removing rival:", error);
+        } finally {
+            setActionLoading(null);
         }
     };
 
@@ -167,15 +207,30 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                                         </div>
                                     </div>
                                     <button
-                                        onClick={() => !isManaged && handleAddRival(player)}
-                                        disabled={isManaged || actionLoading === player.player_id || isAlreadyRival}
+                                        onClick={() => {
+                                            if (isManaged) return;
+                                            if (isAlreadyRival) {
+                                                handleRemoveRival(player.player_id);
+                                            } else {
+                                                handleAddRival(player);
+                                            }
+                                        }}
+                                        disabled={isManaged || actionLoading === player.player_id}
                                         className={`p-2 rounded-full transition-all ${
-                                            isManaged || isAlreadyRival
-                                                ? "text-tennis-green-500 bg-tennis-green-50 cursor-default opacity-50"
-                                                : "text-gray-400 hover:text-tennis-green-600 hover:bg-tennis-green-50"
+                                            isManaged
+                                                ? "text-gray-200 cursor-default opacity-50"
+                                                : isAlreadyRival
+                                                    ? "text-tennis-green-600 bg-tennis-green-50 hover:bg-tennis-green-100"
+                                                    : "text-gray-400 hover:text-tennis-green-600 hover:bg-tennis-green-50"
                                         }`}
                                     >
-                                        {isAlreadyRival ? <Star size={24} fill="currentColor" /> : <UserPlus size={24} />}
+                                        {actionLoading === player.player_id ? (
+                                            <Loader2 size={24} className="animate-spin" />
+                                        ) : isAlreadyRival ? (
+                                            <Star size={24} fill="currentColor" />
+                                        ) : (
+                                            <UserPlus size={24} />
+                                        )}
                                     </button>
                                 </div>
                             );
@@ -185,15 +240,6 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
             </div>
 
             <div className="space-y-6">
-                <div className="bg-white rounded-3xl shadow-sm border border-tennis-green-50 overflow-hidden min-h-[400px] sm:min-h-[500px]">
-                    <MultiPlayerChart 
-                        playerType="opponent" 
-                        title="ライバル比較グラフ" 
-                        activeManagedPlayerId={activeManagedPlayerId}
-                        showControls={false}
-                    />
-                </div>
-
                 <div className="glass-panel p-6 shadow-sm">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg font-black text-gray-800 flex items-center gap-2">
@@ -223,21 +269,29 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                                         className="relative group"
                                     >
                                         <button
-                                            onClick={() => {
-                                                window.dispatchEvent(new CustomEvent("player-visibility-changed", {
-                                                    detail: { playerId: rival.player_id }
-                                                }));
-                                            }}
-                                            className="w-full p-4 bg-white rounded-2xl shadow-sm border border-tennis-green-50 flex items-center justify-between hover:border-tennis-green-200 hover:shadow-md transition-all text-left"
+                                            onClick={() => handleToggleVisibility(rival.player_id)}
+                                            className={`w-full p-4 rounded-2xl shadow-sm border flex items-center justify-between transition-all text-left ${
+                                                hiddenRivalIds.has(rival.player_id)
+                                                ? "bg-gray-50 border-gray-100 opacity-60"
+                                                : "bg-white border-tennis-green-50 hover:border-tennis-green-200 hover:shadow-md"
+                                            }`}
                                         >
                                             <div className="flex items-center gap-4 flex-1 min-w-0">
-                                                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-bold text-xl shrink-0 group-hover:bg-tennis-green-50 transition-colors">
+                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl shrink-0 transition-colors ${
+                                                    hiddenRivalIds.has(rival.player_id)
+                                                    ? "bg-gray-200 text-gray-400"
+                                                    : "bg-tennis-green-100 text-tennis-green-600 group-hover:bg-tennis-green-50"
+                                                }`}>
                                                     {rival.last_name?.[0]}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex items-center gap-2">
-                                                        <p className="font-bold text-gray-800 text-lg truncate">{rival.full_name}</p>
-                                                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded bg-gray-50 ${diffColorClass}`}>
+                                                        <p className={`font-bold text-lg truncate ${
+                                                            hiddenRivalIds.has(rival.player_id) ? "text-gray-400" : "text-gray-800"
+                                                        }`}>{rival.full_name}</p>
+                                                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
+                                                            hiddenRivalIds.has(rival.player_id) ? "bg-gray-100 text-gray-300" : `bg-gray-50 ${diffColorClass}`
+                                                        }`}>
                                                             {sign}{diff.toLocaleString()}
                                                         </span>
                                                     </div>
@@ -245,7 +299,9 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                                                 </div>
                                             </div>
                                             <div className="text-right shrink-0 ml-2">
-                                                <p className="text-sm font-black text-gray-800">{rPoint.toLocaleString()} <span className="text-[10px] font-bold">pt</span></p>
+                                                <p className={`text-sm font-black ${
+                                                    hiddenRivalIds.has(rival.player_id) ? "text-gray-300" : "text-gray-800"
+                                                }`}>{rPoint.toLocaleString()} <span className="text-[10px] font-bold">pt</span></p>
                                                 <p className="text-[10px] text-gray-400 font-bold">{rival.category}</p>
                                             </div>
                                         </button>
@@ -275,6 +331,15 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                             )}
                         </div>
                     )}
+                </div>
+
+                <div className="bg-white rounded-3xl shadow-sm border border-tennis-green-50 overflow-hidden min-h-[400px] sm:min-h-[500px]">
+                    <MultiPlayerChart 
+                        playerType="opponent" 
+                        title="ライバル比較グラフ" 
+                        activeManagedPlayerId={activeManagedPlayerId}
+                        showControls={false}
+                    />
                 </div>
             </div>
         </div>

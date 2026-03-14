@@ -453,6 +453,7 @@ export default function MultiPlayerChart({
                                         connectNulls
                                         isAnimationActive={true}
                                         baseValue="dataMax"
+                                        legendType="none"
                                     />
                                 );
                             })}

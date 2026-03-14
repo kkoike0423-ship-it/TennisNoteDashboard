@@ -21,6 +21,7 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
     const [displayData, setDisplayData] = useState<DisplayData[]>([]);
     const [yearMonth, setYearMonth] = useState<string>('');
     const [selectedGender, setSelectedGender] = useState<string>('all');
+    const [availableGenders, setAvailableGenders] = useState<string[]>([]);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [activeManagedPlayerId, setActiveManagedPlayerId] = useState<string | null>(null);
     const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set());
@@ -38,6 +39,18 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                 if (uniqueCats.length > 0) {
                     setSelectedCategory(initialCategory || 'U11'); 
                 }
+            }
+        };
+
+        const fetchGenders = async () => {
+            const { data } = await supabase
+                .from('players')
+                .select('gender')
+                .not('gender', 'is', null);
+
+            if (data) {
+                const uniqueGenders = Array.from(new Set(data.map(g => g.gender))).sort();
+                setAvailableGenders(uniqueGenders);
             }
         };
 
@@ -64,6 +77,7 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
         };
 
         fetchCategories();
+        fetchGenders();
         fetchUserPreferences();
     }, [initialCategory, initialGender]);
 
@@ -123,25 +137,52 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
             return;
         }
 
-        const { error } = await supabase
-            .from('user_watched_players')
-            .insert({
-                user_id: session.user.id,
-                player_id: player.player_id,
-                player_type: type,
-                target_managed_player_id: type === 'opponent' ? activeManagedPlayerId : null
-            });
+        if (watchedIds.has(player.player_id)) {
+            // Remove
+            let dbDelete = supabase
+                .from('user_watched_players')
+                .delete()
+                .eq('user_id', session.user.id)
+                .eq('player_id', player.player_id)
+                .eq('player_type', type);
 
-        if (error) {
-            if (error.code === '23505') {
-                alert('既に登録されています。');
-            } else {
+            if (type === 'opponent' && activeManagedPlayerId) {
+                dbDelete = dbDelete.eq('target_managed_player_id', activeManagedPlayerId);
+            }
+
+            const { error } = await dbDelete;
+
+            if (error) {
                 alert('エラーが発生しました。');
+            } else {
+                setWatchedIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(player.player_id);
+                    return next;
+                });
+                window.dispatchEvent(new CustomEvent('watched-players-changed', { detail: { playerType: type } }));
             }
         } else {
-            setWatchedIds(prev => new Set(prev).add(player.player_id));
-            window.dispatchEvent(new CustomEvent('watched-players-changed', { detail: { playerType: type } }));
-            // Success feedback could be improved but keeping it simple for now
+            // Add
+            const { error } = await supabase
+                .from('user_watched_players')
+                .insert({
+                    user_id: session.user.id,
+                    player_id: player.player_id,
+                    player_type: type,
+                    target_managed_player_id: type === 'opponent' ? activeManagedPlayerId : null
+                });
+
+            if (error) {
+                if (error.code === '23505') {
+                    alert('既に登録されています。');
+                } else {
+                    alert('エラーが発生しました。');
+                }
+            } else {
+                setWatchedIds(prev => new Set(prev).add(player.player_id));
+                window.dispatchEvent(new CustomEvent('watched-players-changed', { detail: { playerType: type } }));
+            }
         }
         setActionLoading(null);
     };
@@ -149,7 +190,8 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
     const filteredData = displayData.filter(item => {
         const matchesSearch = item.player.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.player.team?.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesGender = selectedGender === 'all' || item.player.gender === selectedGender;
+        const matchesGender = selectedGender === 'all' || 
+            (item.player.gender?.trim() === selectedGender?.trim());
         return matchesSearch && matchesGender;
     });
 
@@ -178,17 +220,26 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                     <label className="text-sm font-bold text-gray-600 flex items-center gap-2">
                         <Users size={16} /> 性別
                     </label>
-                    <div className="flex bg-gray-100 p-1 rounded-xl">
-                        {['all', '男子', '女子'].map(g => (
+                    <div className="flex flex-wrap bg-gray-100 p-1 rounded-xl gap-1">
+                        <button
+                            onClick={() => setSelectedGender('all')}
+                            className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all ${selectedGender === 'all'
+                                    ? 'bg-white text-tennis-green-600 shadow-sm'
+                                    : 'text-gray-400 hover:text-gray-600'
+                                }`}
+                        >
+                            すべて
+                        </button>
+                        {availableGenders.map(g => (
                             <button
                                 key={g}
                                 onClick={() => setSelectedGender(g)}
-                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${selectedGender === g
+                                className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all ${selectedGender === g
                                         ? 'bg-white text-tennis-green-600 shadow-sm'
                                         : 'text-gray-400 hover:text-gray-600'
                                     }`}
                             >
-                                {g === 'all' ? 'すべて' : g}
+                                {g}
                             </button>
                         ))}
                     </div>
@@ -295,15 +346,15 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                                             <div className="flex items-center justify-center gap-2">
                                                 <button
                                                     onClick={() => handleAction(item.player, 'opponent')}
-                                                    disabled={watchedIds.has(item.player.player_id) || actionLoading?.startsWith(item.player.player_id)}
+                                                    disabled={actionLoading?.startsWith(item.player.player_id)}
                                                     className={`px-2 py-1.5 rounded-lg transition-all flex items-center gap-1 text-[10px] font-black whitespace-nowrap ${
                                                         watchedIds.has(item.player.player_id)
-                                                        ? 'bg-gray-100 text-gray-400 cursor-default'
+                                                        ? 'bg-amber-500 text-white shadow-md'
                                                         : 'bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white shadow-sm'
                                                     }`}
                                                 >
-                                                    <Star size={12} fill={watchedIds.has(item.player.player_id) ? "currentColor" : "none"} />
-                                                    {watchedIds.has(item.player.player_id) ? '済' : 'ライバル'}
+                                                    <Star size={12} fill={watchedIds.has(item.player.player_id) ? "white" : "none"} />
+                                                    {watchedIds.has(item.player.player_id) ? '解除' : 'ライバル'}
                                                 </button>
                                                 <button
                                                     onClick={() => handleAction(item.player, 'managed')}
