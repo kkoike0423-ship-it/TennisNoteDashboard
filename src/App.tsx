@@ -19,7 +19,7 @@ function App() {
   const [managedPlayers, setManagedPlayers] = useState<Player[]>([]);
   const [activeManagedPlayerId, setActiveManagedPlayerId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [fontSize, setFontSize] = useState<'normal' | 'large' | 'xlarge'>('large');
+  const [fontSize, setFontSize] = useState<'small' | 'normal' | 'large' | 'xlarge'>('normal');
 
   const activeManagedPlayer = managedPlayers.find(p => p.player_id === activeManagedPlayerId);
 
@@ -226,13 +226,13 @@ function App() {
            <div className="px-4 py-2">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">文字サイズ</p>
               <div className="flex bg-gray-50 p-1 rounded-lg border border-gray-100">
-                {(['normal', 'large', 'xlarge'] as const).map((size) => (
+                {(['small', 'normal', 'large', 'xlarge'] as const).map((size) => (
                   <button
                     key={size}
                     onClick={() => setFontSize(size)}
-                    className={`flex-1 py-1 text-xs font-bold rounded-md transition-all ${fontSize === size ? 'bg-white text-tennis-green-600 shadow-sm' : 'text-gray-400'}`}
+                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all ${fontSize === size ? 'bg-white text-tennis-green-600 shadow-sm' : 'text-gray-400'}`}
                   >
-                    {size === 'normal' ? '中' : size === 'large' ? '大' : '特大'}
+                    {size === 'small' ? '小' : size === 'normal' ? '中' : size === 'large' ? '大' : '特大'}
                   </button>
                 ))}
               </div>
@@ -269,13 +269,13 @@ function App() {
           <div className="flex items-center gap-3">
              {/* Desktop Font Toggle */}
              <div className="hidden sm:flex bg-gray-50 p-1 rounded-xl border border-gray-100 mr-2">
-                {(['normal', 'large', 'xlarge'] as const).map((size) => (
+                {(['small', 'normal', 'large', 'xlarge'] as const).map((size) => (
                   <button
                     key={size}
                     onClick={() => setFontSize(size)}
-                    className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${fontSize === size ? 'bg-white text-tennis-green-600 shadow-sm' : 'text-gray-400'}`}
+                    className={`px-2 py-1 text-[10px] font-bold rounded-lg transition-all ${fontSize === size ? 'bg-white text-tennis-green-600 shadow-sm' : 'text-gray-400'}`}
                   >
-                    {size === 'normal' ? 'A' : size === 'large' ? 'A+' : 'A++'}
+                    {size === 'small' ? 'A-' : size === 'normal' ? 'A' : size === 'large' ? 'A+' : 'A++'}
                   </button>
                 ))}
              </div>
@@ -291,7 +291,7 @@ function App() {
         </header>
 
         <div className={`flex-1 overflow-auto p-4 lg:p-10 pb-24 lg:pb-10 relative ${
-          fontSize === 'large' ? 'text-lg' : fontSize === 'xlarge' ? 'text-xl' : 'text-base'
+          fontSize === 'small' ? 'text-sm' : fontSize === 'large' ? 'text-lg' : fontSize === 'xlarge' ? 'text-xl' : 'text-base'
         }`}>
           <div className="max-w-4xl mx-auto z-10 relative">
             {activeMenu === 'overview' && (
