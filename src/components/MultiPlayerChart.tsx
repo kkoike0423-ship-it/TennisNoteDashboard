@@ -43,13 +43,15 @@ interface MultiPlayerChartProps {
     title: string;
     activeManagedPlayerId: string | null;
     forceSelectedPlayerIds?: string[]; // New prop to force filter to specific IDs
+    showControls?: boolean;
 }
 
 export default function MultiPlayerChart({ 
     playerType, 
     title, 
     activeManagedPlayerId,
-    forceSelectedPlayerIds 
+    forceSelectedPlayerIds,
+    showControls = true
 }: MultiPlayerChartProps) {
     const [loading, setLoading] = useState(true);
     const [watchedPlayers, setWatchedPlayers] = useState<Player[]>([]);
@@ -284,68 +286,72 @@ export default function MultiPlayerChart({
                     </h3>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto bg-gray-50 p-1.5 rounded-xl border border-gray-100">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Category</span>
-                    <select
-                        className="flex-1 sm:flex-none bg-transparent text-gray-700 py-1 px-2 rounded-lg outline-none text-xs font-bold"
-                        value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                    >
-                        {availableCategories.length === 0 ? (
-                            <option value="">データなし</option>
-                        ) : (
-                            availableCategories.map(cat => (
-                                <option key={cat} value={cat}>{cat}</option>
-                            ))
-                        )}
-                    </select>
-                </div>
+                {showControls && (
+                    <div className="flex items-center gap-2 w-full sm:w-auto bg-gray-50 p-1.5 rounded-xl border border-gray-100">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Category</span>
+                        <select
+                            className="flex-1 sm:flex-none bg-transparent text-gray-700 py-1 px-2 rounded-lg outline-none text-xs font-bold"
+                            value={selectedCategory}
+                            onChange={(e) => setSelectedCategory(e.target.value)}
+                        >
+                            {availableCategories.length === 0 ? (
+                                <option value="">データなし</option>
+                            ) : (
+                                availableCategories.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))
+                            )}
+                        </select>
+                    </div>
+                )}
             </div>
 
             {/* Player Selection Checkboxes */}
-            <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
-                {watchedPlayers
-                    .sort((a, b) => {
-                        // Managed player always first, then by point descending (strongest first)
-                        if (a.player_id === activeManagedPlayerId) return -1;
-                        if (b.player_id === activeManagedPlayerId) return 1;
-                        return (b.ranking_point || 0) - (a.ranking_point || 0);
-                    })
-                    .map((player, idx) => {
-                        const color = getColor(player.player_id, idx);
-                        const isSelected = selectedPlayers.has(player.player_id);
-                        const isManaged = player.player_id === activeManagedPlayerId;
-                        const name = player.full_name || player.last_name || "Unknown";
+            {showControls && (
+                <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
+                    {watchedPlayers
+                        .sort((a, b) => {
+                            // Managed player always first, then by point descending (strongest first)
+                            if (a.player_id === activeManagedPlayerId) return -1;
+                            if (b.player_id === activeManagedPlayerId) return 1;
+                            return (b.ranking_point || 0) - (a.ranking_point || 0);
+                        })
+                        .map((player, idx) => {
+                            const color = getColor(player.player_id, idx);
+                            const isSelected = selectedPlayers.has(player.player_id);
+                            const isManaged = player.player_id === activeManagedPlayerId;
+                            const name = player.full_name || player.last_name || "Unknown";
 
-                        return (
-                            <label
-                                key={player.player_id}
-                                className={`flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl border text-[10px] sm:text-xs cursor-pointer transition-all duration-300 select-none ${isSelected
-                                        ? 'bg-white shadow-md border-gray-100 ring-2 ring-tennis-green-100'
-                                        : 'bg-gray-100/50 border-transparent text-gray-400 opacity-60 hover:opacity-100 hover:bg-gray-100'
-                                    }`}
-                            >
-                                <input
-                                    type="checkbox"
-                                    className="hidden"
-                                    checked={isSelected}
-                                    onChange={() => togglePlayerSelection(player.player_id)}
-                                />
-                                <div
-                                    className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0 transition-transform duration-200"
-                                    style={{
-                                        backgroundColor: isSelected ? color : '#d1d5db',
-                                        transform: isSelected ? 'scale(1)' : 'scale(0.8)'
-                                    }}
-                                />
-                                <span className={`font-bold whitespace-nowrap ${isSelected ? 'text-gray-800' : 'text-gray-500'}`}>
-                                    {isManaged && <span className="text-[8px] bg-tennis-green-100 text-tennis-green-600 px-1 py-0.5 rounded mr-1">管理</span>}
-                                    {name}
-                                </span>
-                            </label>
-                        );
-                    })}
-            </div>
+                            return (
+                                <label
+                                    key={player.player_id}
+                                    className={`flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl border text-[10px] sm:text-xs cursor-pointer transition-all duration-300 select-none ${isSelected
+                                            ? 'bg-white shadow-md border-gray-100 ring-2 ring-tennis-green-100'
+                                            : 'bg-gray-100/50 border-transparent text-gray-400 opacity-60 hover:opacity-100 hover:bg-gray-100'
+                                        }`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        className="hidden"
+                                        checked={isSelected}
+                                        onChange={() => togglePlayerSelection(player.player_id)}
+                                    />
+                                    <div
+                                        className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0 transition-transform duration-200"
+                                        style={{
+                                            backgroundColor: isSelected ? color : '#d1d5db',
+                                            transform: isSelected ? 'scale(1)' : 'scale(0.8)'
+                                        }}
+                                    />
+                                    <span className={`font-bold whitespace-nowrap ${isSelected ? 'text-gray-800' : 'text-gray-500'}`}>
+                                        {isManaged && <span className="text-[8px] bg-tennis-green-100 text-tennis-green-600 px-1 py-0.5 rounded mr-1">管理</span>}
+                                        {name}
+                                    </span>
+                                </label>
+                            );
+                        })}
+                </div>
+            )}
 
             <div className={`w-full ${playerType === 'managed' ? 'h-[300px] md:h-[400px]' : 'h-[500px] md:h-[700px]'}`}>
                 {chartDataCategory.length > 0 && (
