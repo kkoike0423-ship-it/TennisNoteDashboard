@@ -289,7 +289,7 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                                                         <p className={`font-bold text-lg truncate ${
                                                             hiddenRivalIds.has(rival.player_id) ? "text-gray-400" : "text-gray-800"
                                                         }`}>{rival.full_name}</p>
-                                                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
+                                                        <span className={`text-xs font-black px-2 py-0.5 rounded shadow-sm ${
                                                             hiddenRivalIds.has(rival.player_id) ? "bg-gray-100 text-gray-300" : `bg-gray-50 ${diffColorClass}`
                                                         }`}>
                                                             {sign}{diff.toLocaleString()}
