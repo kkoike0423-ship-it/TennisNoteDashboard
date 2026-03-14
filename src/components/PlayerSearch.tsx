@@ -152,6 +152,28 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
 
         if (watchedIds.has(playerId)) {
             // Remove
+            const playerToRemove = watchedPlayersList.find(p => p.player_id === playerId) || 
+                                 results.find(p => p.player_id === playerId);
+            const playerName = playerToRemove ? (playerToRemove.full_name || `${playerToRemove.last_name} ${playerToRemove.first_name}`) : playerId;
+            
+            const confirmMsg = playerType === 'managed' 
+                ? `「${playerName}」を管理リストから削除しますか？\n紐づく対戦相手（ライバル）の情報もすべて削除されます。`
+                : `「${playerName}」をリストから削除しますか？`;
+
+            if (!window.confirm(confirmMsg)) {
+                setActionLoading(null);
+                return;
+            }
+
+            if (playerType === 'managed') {
+                // Delete associated opponents first
+                await supabase
+                    .from('user_watched_players')
+                    .delete()
+                    .eq('user_id', session.user.id)
+                    .eq('target_managed_player_id', playerId);
+            }
+
             let dbQuery = supabase
                 .from('user_watched_players')
                 .delete()
