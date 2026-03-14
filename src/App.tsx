@@ -19,7 +19,7 @@ function App() {
   const [managedPlayers, setManagedPlayers] = useState<Player[]>([]);
   const [activeManagedPlayerId, setActiveManagedPlayerId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [fontSize, setFontSize] = useState<'small' | 'normal' | 'large' | 'xlarge'>('normal');
+  const [fontSizeLevel, setFontSizeLevel] = useState<number>(3); // 1 to 5
 
   const activeManagedPlayer = managedPlayers.find(p => p.player_id === activeManagedPlayerId);
 
@@ -125,6 +125,10 @@ function App() {
     }
   }, [session, fetchManagedPlayers]);
 
+  const changeFontSize = (delta: number) => {
+    setFontSizeLevel(prev => Math.min(5, Math.max(1, prev + delta)));
+  };
+
   if (isAuthLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-tennis-green-50">
@@ -225,16 +229,29 @@ function App() {
            
            <div className="px-4 py-2">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">文字サイズ</p>
-              <div className="flex bg-gray-50 p-1 rounded-lg border border-gray-100">
-                {(['small', 'normal', 'large', 'xlarge'] as const).map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setFontSize(size)}
-                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all ${fontSize === size ? 'bg-white text-tennis-green-600 shadow-sm' : 'text-gray-400'}`}
-                  >
-                    {size === 'small' ? '小' : size === 'normal' ? '中' : size === 'large' ? '大' : '特大'}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between bg-gray-50 p-2 rounded-xl border border-gray-100">
+                <button
+                  onClick={() => changeFontSize(-1)}
+                  disabled={fontSizeLevel <= 1}
+                  className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm text-gray-600 disabled:opacity-30 disabled:shadow-none"
+                >
+                  <span className="text-sm font-bold">A-</span>
+                </button>
+                <div className="flex flex-col items-center">
+                  <span className="text-[10px] font-black text-tennis-green-600">Level {fontSizeLevel}</span>
+                  <div className="flex gap-1 mt-1">
+                    {[1, 2, 3, 4, 5].map(l => (
+                      <div key={l} className={`w-1.5 h-1.5 rounded-full ${l <= fontSizeLevel ? 'bg-tennis-green-500' : 'bg-gray-200'}`}></div>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={() => changeFontSize(1)}
+                  disabled={fontSizeLevel >= 5}
+                  className="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm text-gray-600 disabled:opacity-30 disabled:shadow-none"
+                >
+                  <span className="text-lg font-bold">A+</span>
+                </button>
               </div>
            </div>
 
@@ -267,17 +284,23 @@ function App() {
           </div>
           
           <div className="flex items-center gap-3">
-             {/* Desktop Font Toggle */}
-             <div className="hidden sm:flex bg-gray-50 p-1 rounded-xl border border-gray-100 mr-2">
-                {(['small', 'normal', 'large', 'xlarge'] as const).map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setFontSize(size)}
-                    className={`px-2 py-1 text-[10px] font-bold rounded-lg transition-all ${fontSize === size ? 'bg-white text-tennis-green-600 shadow-sm' : 'text-gray-400'}`}
-                  >
-                    {size === 'small' ? 'A-' : size === 'normal' ? 'A' : size === 'large' ? 'A+' : 'A++'}
-                  </button>
-                ))}
+             {/* Desktop Font Stepper */}
+             <div className="hidden sm:flex items-center bg-gray-50 p-1 rounded-xl border border-gray-100 mr-2">
+                <button
+                  onClick={() => changeFontSize(-1)}
+                  disabled={fontSizeLevel <= 1}
+                  className="px-3 py-1 text-xs font-bold text-gray-500 hover:text-tennis-green-600 disabled:opacity-30 transition-colors"
+                >
+                  A-
+                </button>
+                <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                <button
+                  onClick={() => changeFontSize(1)}
+                  disabled={fontSizeLevel >= 5}
+                  className="px-3 py-1 text-lg font-bold text-gray-500 hover:text-tennis-green-600 disabled:opacity-30 transition-colors"
+                >
+                  A+
+                </button>
              </div>
 
              <div className="flex flex-col items-end hidden sm:block">
@@ -291,7 +314,10 @@ function App() {
         </header>
 
         <div className={`flex-1 overflow-auto p-4 lg:p-10 pb-24 lg:pb-10 relative ${
-          fontSize === 'small' ? 'text-sm' : fontSize === 'large' ? 'text-lg' : fontSize === 'xlarge' ? 'text-xl' : 'text-base'
+          fontSizeLevel === 1 ? 'text-xs' :
+            fontSizeLevel === 2 ? 'text-sm' :
+              fontSizeLevel === 4 ? 'text-lg' :
+                fontSizeLevel === 5 ? 'text-xl' : 'text-base'
         }`}>
           <div className="max-w-4xl mx-auto z-10 relative">
             {activeMenu === 'overview' && (
