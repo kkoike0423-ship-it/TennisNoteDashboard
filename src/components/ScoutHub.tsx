@@ -305,31 +305,31 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                             <TrendingUp size={120} />
                         </div>
                         
-                        <div className="flex items-center justify-between relative z-10">
+                        <div className="flex items-center justify-between relative z-10 gap-2">
                             {/* Comparison Cards */}
-                            <div className="flex flex-col items-center gap-2 flex-1">
-                                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-2xl border-4 border-white shadow-sm">
+                            <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
+                                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl sm:text-2xl border-4 border-white shadow-sm shrink-0">
                                     我
                                 </div>
-                                <p className="text-sm font-bold text-gray-800">{managedPlayer?.last_name || 'わが子'}</p>
+                                <p className="text-xs sm:text-sm font-bold text-gray-800 text-center truncate w-full">{managedPlayer?.last_name || 'わが子'}</p>
                             </div>
 
-                            <div className="px-4">
-                                <div className="bg-tennis-green-500 text-white font-black text-xs px-3 py-1 rounded-full shadow-sm">VS</div>
+                            <div className="shrink-0">
+                                <div className="bg-tennis-green-500 text-white font-black text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1 rounded-full shadow-sm">VS</div>
                             </div>
 
-                            <div className="flex flex-col items-center gap-2 flex-1">
-                                <div className="w-16 h-16 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 font-bold text-2xl border-4 border-white shadow-sm">
+                            <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
+                                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 font-bold text-xl sm:text-2xl border-4 border-white shadow-sm shrink-0">
                                     {rivals.find(r => r.player_id === selectedRivalId)?.last_name?.[0] || '敵'}
                                 </div>
-                                <p className="text-sm font-bold text-gray-800 line-clamp-1">{rivals.find(r => r.player_id === selectedRivalId)?.full_name}</p>
+                                <p className="text-xs sm:text-sm font-bold text-gray-800 text-center truncate w-full">{rivals.find(r => r.player_id === selectedRivalId)?.full_name}</p>
                             </div>
                         </div>
 
-                        <div className="mt-8 pt-6 border-t border-gray-50 grid grid-cols-2 gap-4">
-                            <div className="bg-gray-50/50 p-3 rounded-xl text-center">
-                                <p className="text-[10px] text-gray-500 font-bold mb-1 uppercase tracking-wider">Point Diff</p>
-                                <p className="text-lg font-black text-gray-800">
+                        <div className="mt-8 pt-6 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="bg-gray-50/50 p-3 rounded-xl text-center flex flex-col justify-center">
+                                <p className="text-[10px] text-gray-500 font-bold mb-1 uppercase tracking-wider whitespace-nowrap">Point Diff</p>
+                                <p className="text-lg font-black text-gray-800 whitespace-nowrap">
                                     {(() => {
                                         const r = rivals.find(r => r.player_id === selectedRivalId);
                                         const rPoint = r?.ranking_point || 0;
@@ -342,9 +342,9 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                             </div>
                             <button 
                                 onClick={() => handleRemoveRival(selectedRivalId)}
-                                className="flex items-center justify-center gap-2 p-3 bg-rose-50 text-rose-500 rounded-xl text-xs font-bold hover:bg-rose-100 transition-colors"
+                                className="flex items-center justify-center gap-2 p-3 bg-rose-50 text-rose-500 rounded-xl text-xs font-bold hover:bg-rose-100 transition-colors whitespace-nowrap"
                             >
-                                <Trash2 size={14} /> ライバル登録を解除
+                                <Trash2 size={14} className="shrink-0" /> 解除する
                             </button>
                         </div>
                     </div>

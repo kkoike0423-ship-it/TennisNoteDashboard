@@ -165,10 +165,10 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                         全国の選手データと最新ランキングをカテゴリー別に閲覧できます。
                     </p>
                 </div>
-                <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-tennis-green-100">
-                    <div className="flex items-center px-4 py-2 text-tennis-green-600 bg-tennis-green-50 rounded-xl">
-                        <Calendar size={18} className="mr-2" />
-                        <span className="text-sm font-bold">最新データ: {yearMonth}</span>
+                <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-tennis-green-100 shrink-0">
+                    <div className="flex items-center px-3 py-1.5 sm:px-4 sm:py-2 text-tennis-green-600 bg-tennis-green-50 rounded-xl whitespace-nowrap">
+                        <Calendar size={14} className="mr-2 sm:size-[18px]" />
+                        <span className="text-[10px] sm:text-sm font-bold">最新: {yearMonth}</span>
                     </div>
                 </div>
             </header>
@@ -252,65 +252,65 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                         <table className="w-full text-left border-collapse">
                             <thead className="sticky top-0 bg-white/90 backdrop-blur-md z-10 border-b border-gray-100">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">順位</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">選手名 / ID</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">所属チーム</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">ポイント</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">基本カテゴリ</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">クイック登録</th>
+                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center min-w-[50px]">順位</th>
+                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest min-w-[140px]">選手名 / ID</th>
+                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest min-w-[120px]">所属チーム</th>
+                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right min-w-[80px]">ポイント</th>
+                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center min-w-[100px]">基本カテゴリ</th>
+                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center min-w-[150px]">クイック登録</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {filteredData.map((item, idx) => (
                                     <tr key={idx} className="hover:bg-tennis-green-50/50 transition-colors group">
-                                        <td className="px-6 py-5 text-center">
-                                            <span className="text-2xl font-black text-tennis-green-600">
+                                        <td className="px-3 py-5 text-center">
+                                            <span className="text-xl sm:text-2xl font-black text-tennis-green-600 whitespace-nowrap">
                                                 {item.ranking?.rank}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-5">
-                                            <p className="font-bold text-gray-800 text-lg">{item.player.full_name}</p>
-                                            <p className="text-[10px] text-gray-400 font-mono mt-1">{item.player.player_id}</p>
+                                        <td className="px-3 py-5">
+                                            <p className="font-bold text-gray-800 text-base sm:text-lg whitespace-nowrap overflow-hidden text-ellipsis">{item.player.full_name}</p>
+                                            <p className="text-[9px] sm:text-[10px] text-gray-400 font-mono mt-0.5">{item.player.player_id}</p>
                                         </td>
-                                        <td className="px-6 py-5">
-                                            <span className="text-gray-600 font-medium">{item.player.team || '-'}</span>
+                                        <td className="px-3 py-5">
+                                            <span className="text-gray-600 font-medium text-sm sm:text-base line-clamp-2">{item.player.team || '-'}</span>
                                         </td>
-                                        <td className="px-6 py-5 text-right">
-                                            <span className="font-bold text-tennis-green-700 text-lg">
-                                                {item.ranking?.rank === 0 ? '-' : item.player.ranking_point.toLocaleString()}
-                                            </span>
-                                            <span className="text-[10px] text-gray-400 font-bold ml-1 italic">pt</span>
+                                        <td className="px-3 py-5 text-right">
+                                            <div className="flex items-center justify-end whitespace-nowrap">
+                                                <span className="font-bold text-tennis-green-700 text-base sm:text-lg">
+                                                    {item.ranking?.rank === 0 ? '-' : item.player.ranking_point.toLocaleString()}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400 font-bold ml-1 italic shrink-0">pt</span>
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-5 text-center">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${item.player.category === selectedCategory
+                                        <td className="px-3 py-5 text-center">
+                                            <span className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold border whitespace-nowrap ${item.player.category === selectedCategory
                                                     ? 'bg-tennis-green-50 text-tennis-green-700 border-tennis-green-100'
                                                     : 'bg-orange-50 text-orange-700 border-orange-100'
                                                 }`}>
                                                 {item.player.category}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-5">
-                                            <div className="flex items-center justify-center gap-3">
+                                        <td className="px-3 py-5">
+                                            <div className="flex items-center justify-center gap-2">
                                                 <button
                                                     onClick={() => handleAction(item.player, 'opponent')}
                                                     disabled={watchedIds.has(item.player.player_id) || actionLoading?.startsWith(item.player.player_id)}
-                                                    className={`p-2 rounded-xl transition-all flex items-center gap-1.5 text-[10px] font-black tracking-tighter ${
+                                                    className={`px-2 py-1.5 rounded-lg transition-all flex items-center gap-1 text-[10px] font-black whitespace-nowrap ${
                                                         watchedIds.has(item.player.player_id)
                                                         ? 'bg-gray-100 text-gray-400 cursor-default'
                                                         : 'bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white shadow-sm'
                                                     }`}
-                                                    title="ライバル登録"
                                                 >
-                                                    <Star size={14} fill={watchedIds.has(item.player.player_id) ? "currentColor" : "none"} />
-                                                    {watchedIds.has(item.player.player_id) ? '登録済' : 'ライバル'}
+                                                    <Star size={12} fill={watchedIds.has(item.player.player_id) ? "currentColor" : "none"} />
+                                                    {watchedIds.has(item.player.player_id) ? '済' : 'ライバル'}
                                                 </button>
                                                 <button
                                                     onClick={() => handleAction(item.player, 'managed')}
                                                     disabled={actionLoading?.startsWith(item.player.player_id)}
-                                                    className="p-2 bg-tennis-green-50 text-tennis-green-600 rounded-xl hover:bg-tennis-green-600 hover:text-white transition-all shadow-sm group/btn"
-                                                    title="管理選手として追加"
+                                                    className="p-1.5 bg-tennis-green-50 text-tennis-green-600 rounded-lg hover:bg-tennis-green-600 hover:text-white transition-all shadow-sm"
                                                 >
-                                                    <UserPlus size={14} />
+                                                    <UserPlus size={12} />
                                                 </button>
                                             </div>
                                         </td>

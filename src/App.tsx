@@ -275,7 +275,7 @@ function App() {
             >
               <Menu size={24} />
             </button>
-            <h1 className="text-xl font-black text-gray-800 tracking-tight">
+            <h1 className="text-lg sm:text-xl font-black text-gray-800 tracking-tight truncate max-w-[120px] sm:max-w-none whitespace-nowrap">
               {activeMenu === 'overview' ? 'My Dash' :
                 activeMenu === 'scout' ? 'Scouting' :
                   activeMenu === 'draw' ? 'Draw Analysis' :
@@ -390,45 +390,45 @@ function App() {
         </div>
 
         {/* Mobile Bottom Navigation */}
-        <nav className="lg:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-xl border-t border-gray-100 px-6 py-2 flex items-center justify-between z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-[1.5rem]">
+        <nav className="lg:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-xl border-t border-gray-100 px-3 sm:px-6 py-2 flex items-center justify-between z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-[1.5rem]">
           <button
             onClick={() => setActiveMenu('overview')}
-            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 ${activeMenu === 'overview' ? 'text-tennis-green-600 scale-110 font-bold' : 'text-gray-400'}`}
+            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 min-w-0 ${activeMenu === 'overview' ? 'text-tennis-green-600 scale-105 font-bold' : 'text-gray-400'}`}
           >
-            <BarChart3 size={24} strokeWidth={activeMenu === 'overview' ? 2.5 : 2} />
-            <span className="text-[10px]">ホーム</span>
+            <BarChart3 size={20} className="sm:size-6" strokeWidth={activeMenu === 'overview' ? 2.5 : 2} />
+            <span className="text-[9px] sm:text-[10px] truncate w-full text-center">ホーム</span>
           </button>
 
           <button
             onClick={() => setActiveMenu('scout')}
-            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 ${activeMenu === 'scout' ? 'text-tennis-green-600 scale-110 font-bold' : 'text-gray-400'}`}
+            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 min-w-0 ${activeMenu === 'scout' ? 'text-tennis-green-600 scale-105 font-bold' : 'text-gray-400'}`}
           >
-            <Search size={24} strokeWidth={activeMenu === 'scout' ? 2.5 : 2} />
-            <span className="text-[10px]">スカウト</span>
+            <Search size={20} className="sm:size-6" strokeWidth={activeMenu === 'scout' ? 2.5 : 2} />
+            <span className="text-[9px] sm:text-[10px] truncate w-full text-center">スカウト</span>
           </button>
 
           <button
             onClick={() => setActiveMenu('data')}
-            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 ${activeMenu === 'data' ? 'text-tennis-green-600 scale-110 font-bold' : 'text-gray-400'}`}
+            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 min-w-0 ${activeMenu === 'data' ? 'text-tennis-green-600 scale-105 font-bold' : 'text-gray-400'}`}
           >
-            <Database size={24} strokeWidth={activeMenu === 'data' ? 2.5 : 2} />
-            <span className="text-[10px]">名鑑</span>
+            <Database size={20} className="sm:size-6" strokeWidth={activeMenu === 'data' ? 2.5 : 2} />
+            <span className="text-[9px] sm:text-[10px] truncate w-full text-center">名鑑</span>
           </button>
 
           <button
             onClick={() => setActiveMenu('draw')}
-            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 ${activeMenu === 'draw' ? 'text-tennis-green-600 scale-110 font-bold' : 'text-gray-400'}`}
+            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 min-w-0 ${activeMenu === 'draw' ? 'text-tennis-green-600 scale-105 font-bold' : 'text-gray-400'}`}
           >
-            <Presentation size={24} strokeWidth={activeMenu === 'draw' ? 2.5 : 2} />
-            <span className="text-[10px]">ドロー</span>
+            <Presentation size={20} className="sm:size-6" strokeWidth={activeMenu === 'draw' ? 2.5 : 2} />
+            <span className="text-[9px] sm:text-[10px] truncate w-full text-center">ドロー</span>
           </button>
           
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="flex flex-col items-center gap-1 transition-all flex-1 py-1 text-gray-400"
+            className="flex flex-col items-center gap-1 transition-all flex-1 py-1 text-gray-400 min-w-0"
           >
-            <Menu size={24} />
-            <span className="text-[10px]">その他</span>
+            <Menu size={20} className="sm:size-6" />
+            <span className="text-[9px] sm:text-[10px] truncate w-full text-center">その他</span>
           </button>
         </nav>
       </main>
