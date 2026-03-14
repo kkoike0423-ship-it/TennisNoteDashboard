@@ -214,23 +214,27 @@ function App() {
         </nav>
 
         <div className="p-4 border-t border-tennis-green-100 space-y-4">
-          <div className="bg-tennis-green-50 p-3 rounded-xl flex flex-col items-center">
-            <p className="text-[10px] text-tennis-green-600 mb-2 font-bold">Androidアプリ / スマホ</p>
+          <div className="bg-white border border-tennis-green-100 p-3 rounded-xl shadow-sm">
+            <p className="text-[10px] text-tennis-green-600 mb-2 font-bold">Androidアプリ</p>
             {apkDownloadUrl ? (
               <a
                 href={apkDownloadUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="mb-3 flex items-center justify-center w-full rounded-lg bg-tennis-green-500 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-tennis-green-600 shadow-sm"
+                className="flex items-center justify-center w-full rounded-lg bg-tennis-green-500 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-tennis-green-600 shadow-sm"
               >
                 <Download size={14} className="mr-1.5" />
                 APKをダウンロード
               </a>
             ) : (
-              <div className="mb-3 rounded-lg border border-dashed border-tennis-green-200 px-3 py-2 text-center text-[10px] text-gray-500 w-full">
+              <div className="rounded-lg border border-dashed border-tennis-green-200 px-3 py-2 text-center text-[10px] text-gray-500 w-full">
                 APKリンク未設定
               </div>
             )}
+          </div>
+
+          <div className="bg-tennis-green-50 p-3 rounded-xl flex flex-col items-center">
+            <p className="text-[10px] text-tennis-green-600 mb-2 font-bold">WEB版をシェア</p>
             <img
               src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://tennis-note-dashboard.vercel.app"
               alt="QR Code"
