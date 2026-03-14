@@ -25,6 +25,7 @@ cp .env.example .env.local
 3. Set the following values in `.env.local`.
 
 ```bash
+VITE_ANDROID_APK_URL=your-public-apk-url
 VITE_SUPABASE_URL=your-project-url
 VITE_SUPABASE_ANON_KEY=your-anon-key
 ```

@@ -11,6 +11,7 @@ import { Trash2, Users, UserCheck, Menu, X, LogOut, Upload, BarChart3, Search, D
 import type { Player } from './types/database';
 
 function App() {
+  const apkDownloadUrl = import.meta.env.VITE_ANDROID_APK_URL || '';
   const [session, setSession] = useState<Session | null>(null);
   const [activeMenu, setActiveMenu] = useState<'overview' | 'import' | 'draw' | 'data'>('overview');
   const [managedPlayers, setManagedPlayers] = useState<Player[]>([]);
@@ -213,6 +214,24 @@ function App() {
         </nav>
 
         <div className="p-4 border-t border-tennis-green-100 space-y-4">
+          <div className="bg-white border border-tennis-green-100 p-3 rounded-xl shadow-sm">
+            <p className="text-[10px] text-tennis-green-600 mb-2 font-bold">Androidアプリ</p>
+            {apkDownloadUrl ? (
+              <a
+                href={apkDownloadUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center w-full rounded-lg bg-tennis-green-500 px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-tennis-green-600"
+              >
+                APKをダウンロード
+              </a>
+            ) : (
+              <div className="rounded-lg border border-dashed border-tennis-green-200 px-3 py-2 text-center text-xs text-gray-500">
+                APKリンク未設定
+              </div>
+            )}
+          </div>
+
           <div className="bg-tennis-green-50 p-3 rounded-xl flex flex-col items-center">
             <p className="text-[10px] text-tennis-green-600 mb-2 font-bold">スマホでアクセス</p>
             <img
