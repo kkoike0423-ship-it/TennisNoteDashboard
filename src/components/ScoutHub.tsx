@@ -251,19 +251,19 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                                 {/* Always show managed player at the top */}
                                 {managedPlayer && (
                                     <div className="p-4 bg-tennis-green-50/50 rounded-2xl border-2 border-tennis-green-200 flex items-center justify-between relative overflow-hidden group">
-                                        <div className="absolute top-0 right-0 py-1 px-3 bg-tennis-green-200 text-tennis-green-700 text-[8px] font-black rounded-bl-xl">管理選手 (自分)</div>
+                                        <div className="absolute top-0 right-0 py-1 px-3 bg-tennis-green-200 text-tennis-green-700 text-[8px] font-black rounded-bl-xl shadow-sm">基準: 管理選手 (自分)</div>
                                         <div className="flex items-center gap-4 text-left">
-                                            <div className="w-12 h-12 rounded-full bg-white border-2 border-tennis-green-200 flex items-center justify-center text-tennis-green-600 font-bold text-xl">
+                                            <div className="w-12 h-12 rounded-full bg-white border-2 border-tennis-green-200 flex items-center justify-center text-tennis-green-600 font-bold text-xl shadow-inner">
                                                 {managedPlayer.last_name?.[0] || '我'}
                                             </div>
                                             <div>
                                                 <p className="font-bold text-gray-800 text-lg">{managedPlayer.full_name}</p>
-                                                <p className="text-sm text-gray-500">{managedPlayer.team || '所属なし'}</p>
+                                                <p className="text-sm text-gray-500 font-medium">{managedPlayer.team || '所属なし'}</p>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-sm font-bold text-tennis-green-700">{managedPlayer.ranking_point.toLocaleString()} <span className="text-[10px]">pt</span></p>
-                                            <p className="text-[10px] text-gray-400 line-clamp-1">{managedPlayer.category}</p>
+                                            <p className="text-sm font-black text-tennis-green-700">{managedPlayer.ranking_point.toLocaleString()} <span className="text-[10px]">pt</span></p>
+                                            <p className="text-[10px] text-gray-400 font-bold">{managedPlayer.category}</p>
                                         </div>
                                     </div>
                                 )}
@@ -357,24 +357,26 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                         </div>
 
                         <div className="mt-8 pt-6 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="bg-gray-50/50 p-3 rounded-xl text-center flex flex-col justify-center">
-                                <p className="text-[10px] text-gray-500 font-bold mb-1 uppercase tracking-wider whitespace-nowrap">Point Diff</p>
-                                <p className="text-lg font-black text-gray-800 whitespace-nowrap">
+                            <div className="bg-gray-50/50 p-3 rounded-xl text-center flex flex-col justify-center border border-gray-100/50">
+                                <p className="text-[10px] text-gray-400 font-black mb-1 uppercase tracking-wider whitespace-nowrap">Point Difference</p>
+                                <p className="text-lg font-black text-gray-900 whitespace-nowrap">
                                     {(() => {
                                         const r = rivals.find(r => r.player_id === selectedRivalId);
                                         const rPoint = r?.ranking_point || 0;
                                         const mPoint = managedPlayer?.ranking_point || 0;
                                         const diff = rPoint - mPoint;
                                         const sign = diff > 0 ? '+' : '';
-                                        return `${sign}${diff.toLocaleString()}pt`;
+                                        const colorClass = diff > 0 ? 'text-rose-500' : diff < 0 ? 'text-blue-500' : 'text-gray-500';
+                                        return <span className={colorClass}>{sign}{diff.toLocaleString()}pt</span>;
                                     })()}
                                 </p>
                             </div>
                             <button 
                                 onClick={() => handleRemoveRival(selectedRivalId)}
-                                className="flex items-center justify-center gap-2 p-3 bg-rose-50 text-rose-500 rounded-xl text-xs font-bold hover:bg-rose-100 transition-colors whitespace-nowrap"
+                                className="flex flex-col items-center justify-center gap-1 p-3 bg-rose-50/50 text-rose-500 rounded-xl text-[10px] font-black hover:bg-rose-500 hover:text-white transition-all border border-rose-100 group/del"
                             >
-                                <Trash2 size={14} className="shrink-0" /> 解除する
+                                <Trash2 size={16} className="group-hover/del:scale-110 transition-transform" />
+                                <span>ライバル登録を解除</span>
                             </button>
                         </div>
                     </div>
