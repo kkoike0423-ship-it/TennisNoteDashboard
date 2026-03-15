@@ -361,14 +361,14 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
 
                                                     <div className="flex flex-col gap-6">
                                                         {t.games.map((g, idx) => (
-                                                            <div key={g.game_id} className="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all group/item relative">
+                                                            <div key={g.game_id} className="p-4 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all group/item relative">
                                                                 <div className="absolute top-6 left-0 w-1.5 h-10 bg-tennis-green-500 rounded-r-full group-hover/item:h-16 transition-all duration-300"></div>
                                                                 
                                                                 <div className="flex items-start justify-between">
-                                                                    <div className="flex items-start gap-6 flex-1">
-                                                                        <div className="flex flex-col items-center gap-2">
-                                                                            <div className="text-xs font-black text-gray-300 uppercase tracking-tighter">Match</div>
-                                                                            <div className="text-lg font-black text-gray-900 font-mono tracking-tighter leading-none">{idx + 1}</div>
+                                                                    <div className="flex items-start gap-4 sm:gap-6 flex-1">
+                                                                        <div className="flex flex-col items-center gap-1 w-8 sm:w-12 shrink-0">
+                                                                            <div className="text-[9px] sm:text-xs font-black text-gray-300 uppercase tracking-tighter">Match</div>
+                                                                            <div className="text-base sm:text-lg font-black text-gray-900 font-mono tracking-tighter leading-none">{idx + 1}</div>
                                                                         </div>
                                                                         
                                                                         <div className="flex-1 min-w-0">
@@ -377,9 +377,6 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                                                     {g.result === 'Win' ? 'Winner' : 'Loser'}
                                                                                 </div>
                                                                                 <p className="text-base font-black text-gray-900 tracking-tight">vs {g.opponent_info?.full_name || g.opponent1_id || '---'}</p>
-                                                                                {g.opponent_info && (
-                                                                                    <span className="px-2 py-0.5 bg-tennis-green-50 text-tennis-green-700 rounded-lg text-xs font-black border border-tennis-green-100">Registered</span>
-                                                                                )}
                                                                             </div>
                                                                             
                                                                             <div className="flex flex-wrap items-center gap-6 mb-4">
