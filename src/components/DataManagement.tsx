@@ -204,7 +204,7 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                         ランキング
                     </h1>
                     <p className="text-tennis-green-600 font-bold mt-1">
-                        全国の選手データと最新ランキングをカテゴリー別に閲覧できます。
+                        愛知県の選手と最新ランキングをカテゴリー別に閲覧できます。
                     </p>
                 </div>
                 <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-tennis-green-100 shrink-0">

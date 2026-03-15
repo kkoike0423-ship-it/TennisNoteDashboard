@@ -418,7 +418,7 @@ function App() {
             className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 min-w-0 ${activeMenu === 'data' ? 'text-tennis-green-600 scale-105 font-bold' : 'text-gray-400'}`}
           >
             <Database size={20} className="sm:size-6" strokeWidth={activeMenu === 'data' ? 2.5 : 2} />
-            <span className="text-[9px] sm:text-[10px] truncate w-full text-center">名鑑</span>
+            <span className="text-[9px] sm:text-[10px] truncate w-full text-center">ランキング</span>
           </button>
 
           <button
