@@ -238,7 +238,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
           </div>
           <button
             onClick={() => setIsAddingTournament(true)}
-            className="flex items-center gap-2 px-6 py-3.5 bg-tennis-green-600 text-white rounded-2xl text-sm font-black hover:bg-tennis-green-700 transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-3.5 bg-emerald-600 text-white rounded-2xl text-sm font-black hover:bg-emerald-700 transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isProcessing}
           >
             {isProcessing ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Plus size={18} />}
@@ -268,7 +268,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                 <input disabled={isProcessing} type="text" className="w-full px-5 py-3 rounded-2xl border-2 border-tennis-green-100 outline-none disabled:opacity-50" value={newTournament.location} onChange={e => setNewTournament({...newTournament, location: e.target.value})} />
               </div>
             </div>
-            <button disabled={isProcessing} onClick={handleAddTournament} className="mt-8 w-full py-4 bg-tennis-green-600 text-white rounded-2xl font-black hover:bg-tennis-green-700 shadow-xl disabled:opacity-50 flex justify-center items-center gap-2">
+            <button disabled={isProcessing} onClick={handleAddTournament} className="mt-8 w-full py-4 bg-emerald-600 text-white rounded-2xl font-black hover:bg-emerald-700 shadow-xl disabled:opacity-50 flex justify-center items-center gap-2">
                 {isProcessing && <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
                 保存する
             </button>
@@ -354,7 +354,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                         <button 
                                                             disabled={isProcessing}
                                                             onClick={() => handleAddGame(t.tournament_id)} 
-                                                            className="px-6 py-2.5 bg-tennis-green-600 text-white rounded-xl text-xs font-black hover:bg-tennis-green-700 transition-all flex items-center gap-2 shadow-lg active:scale-95 disabled:opacity-50"
+                                                            className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-black hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg active:scale-95 disabled:opacity-50"
                                                         >
                                                             <Plus size={16} /> 試合を追加
                                                         </button>
