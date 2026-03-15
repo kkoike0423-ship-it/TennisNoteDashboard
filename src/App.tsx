@@ -10,6 +10,7 @@ import DataManagement from './components/DataManagement';
 import ScoutHub from './components/ScoutHub';
 import { Trash2, Menu, X, LogOut, Upload, BarChart3, Search, Database, Download, Presentation, ChevronRight } from 'lucide-react';
 import type { Player } from './types/database';
+import { TournamentActivity } from './components/TournamentActivity';
 
 function App() {
   const apkDownloadUrl = import.meta.env.VITE_ANDROID_APK_URL || 'https://ubuophysnullisrzyulj.supabase.co/storage/v1/object/public/TennisNote/app-release.apk';
@@ -354,6 +355,11 @@ function App() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-6">
+                   <TournamentActivity 
+                     activeManagedPlayerId={activeManagedPlayerId} 
+                     userEmail={session?.user?.email}
+                   />
+                   
                    <MultiPlayerChart
                     playerType="managed"
                     title="ランキング推移"

@@ -208,3 +208,65 @@ ON public.user_watched_players
 FOR ALL
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
+-- 5. tournaments
+CREATE TABLE IF NOT EXISTS public.tournaments (
+    tournament_id TEXT PRIMARY KEY,
+    player_id TEXT REFERENCES public.players(player_id) ON DELETE CASCADE,
+    name TEXT,
+    category TEXT,
+    format TEXT,
+    location TEXT,
+    date TEXT,
+    tournament_code TEXT,
+    tournament_date TEXT,
+    tournament_name TEXT,
+    venue TEXT,
+    match_type TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.tournaments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated users can manage tournaments" ON public.tournaments;
+CREATE POLICY "Authenticated users can manage tournaments"
+ON public.tournaments
+FOR ALL
+USING (auth.role() = 'authenticated')
+WITH CHECK (auth.role() = 'authenticated');
+
+-- 6. games
+CREATE TABLE IF NOT EXISTS public.games (
+    game_id TEXT PRIMARY KEY,
+    tournament_id TEXT REFERENCES public.tournaments(tournament_id) ON DELETE CASCADE,
+    main_player_id TEXT,
+    partner_id TEXT,
+    opponent1_id TEXT,
+    opponent2_id TEXT,
+    set1_self INTEGER,
+    set1_opp INTEGER,
+    set2_self INTEGER,
+    set2_opp INTEGER,
+    set3_self INTEGER,
+    set3_opp INTEGER,
+    set4_self INTEGER,
+    set4_opp INTEGER,
+    set5_self INTEGER,
+    set5_opp INTEGER,
+    tb_self INTEGER,
+    tb_opp INTEGER,
+    format TEXT,
+    score TEXT,
+    result TEXT,
+    memo TEXT,
+    external_game_id TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.games ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated users can manage games" ON public.games;
+CREATE POLICY "Authenticated users can manage games"
+ON public.games
+FOR ALL
+USING (auth.role() = 'authenticated')
+WITH CHECK (auth.role() = 'authenticated');

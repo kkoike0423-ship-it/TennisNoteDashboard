@@ -34,6 +34,48 @@ type CategoryRankingCsvRow = {
     updatedAt?: string;
 };
 
+type TournamentCsvRow = {
+    tournamentId?: string;
+    playerId?: string;
+    name?: string;
+    category?: string;
+    format?: string;
+    location?: string;
+    date?: string;
+    tournamentCode?: string;
+    tournamentDate?: string;
+    tournamentName?: string;
+    venue?: string;
+    matchType?: string;
+};
+
+type GameCsvRow = {
+    gameId?: string;
+    tournamentId?: string;
+    mainPlayerId?: string;
+    partnerId?: string;
+    opponent1Id?: string;
+    opponent2Id?: string;
+    set1Self?: string;
+    set1Opp?: string;
+    set2Self?: string;
+    set2Opp?: string;
+    set3Self?: string;
+    set3Opp?: string;
+    set4Self?: string;
+    set4Opp?: string;
+    set5Self?: string;
+    set5Opp?: string;
+    tbSelf?: string;
+    tbOpp?: string;
+    format?: string;
+    score?: string;
+    result?: string;
+    memo?: string;
+    createdAt?: string;
+    externalGameId?: string;
+};
+
 const getErrorMessage = (error: unknown) => {
     if (error instanceof Error) {
         return error.message;
@@ -49,6 +91,8 @@ export const parseAndUploadZip = async (file: File, onProgress: (msg: string) =>
         let playersCsv = '';
         let historyCsv = '';
         let categoryCsv = '';
+        let tournamentsCsv = '';
+        let gamesCsv = '';
 
         onProgress('Extracting specific CSV files from ZIP...');
 
@@ -57,18 +101,22 @@ export const parseAndUploadZip = async (file: File, onProgress: (msg: string) =>
 
             const lowerName = filename.toLowerCase();
 
-            // Extract only the 3 specific files based on Android app's prefix
+            // Extract only the specific files based on Android app's prefix
             if (lowerName.startsWith('players_') && lowerName.endsWith('.csv')) {
                 playersCsv = await zipEntry.async('text');
             } else if (lowerName.startsWith('player_ranking_history_') && lowerName.endsWith('.csv')) {
                 historyCsv = await zipEntry.async('text');
             } else if (lowerName.startsWith('category_rankings_') && lowerName.endsWith('.csv')) {
                 categoryCsv = await zipEntry.async('text');
+            } else if (lowerName.startsWith('tournaments_') && lowerName.endsWith('.csv')) {
+                tournamentsCsv = await zipEntry.async('text');
+            } else if (lowerName.startsWith('games_') && lowerName.endsWith('.csv')) {
+                gamesCsv = await zipEntry.async('text');
             }
         }
 
-        if (!playersCsv && !historyCsv && !categoryCsv) {
-            throw new Error('No relevant CSV files (players, player_ranking_history, or category_rankings) found in the ZIP.');
+        if (!playersCsv && !historyCsv && !categoryCsv && !tournamentsCsv && !gamesCsv) {
+            throw new Error('No relevant CSV files found in the ZIP.');
         }
 
         // Process Players
@@ -89,7 +137,6 @@ export const parseAndUploadZip = async (file: File, onProgress: (msg: string) =>
             })).filter(p => p.player_id); // ensure valid ID
 
             onProgress(`Uploading ${players.length} Players to Database...`);
-            // Warning: In production, large arrays should be chunked before upserting
             const { error } = await supabase.from('players').upsert(
                 players.map(p => ({
                     player_id: p.player_id,
@@ -150,6 +197,72 @@ export const parseAndUploadZip = async (file: File, onProgress: (msg: string) =>
             if (error) throw new Error(`Category Ranking Upload Error: ${error.message}`);
         }
 
+        // Process Tournaments
+        if (tournamentsCsv) {
+            onProgress('Parsing Tournaments CSV...');
+            const parsed = Papa.parse(tournamentsCsv, { header: true, skipEmptyLines: true });
+            const tournamentRows = (parsed.data as TournamentCsvRow[]).map(row => ({
+                tournament_id: row.tournamentId,
+                player_id: row.playerId,
+                name: row.name,
+                category: row.category,
+                format: row.format,
+                location: row.location,
+                date: row.date,
+                tournament_code: row.tournamentCode,
+                tournament_date: row.tournamentDate,
+                tournament_name: row.tournamentName,
+                venue: row.venue,
+                match_type: row.matchType
+            })).filter(r => r.tournament_id && r.player_id);
+
+            onProgress(`Uploading ${tournamentRows.length} Tournaments...`);
+            const { error } = await supabase.from('tournaments').upsert(
+                tournamentRows,
+                { onConflict: 'tournament_id' }
+            );
+            if (error) throw new Error(`Tournament Upload Error: ${error.message}`);
+        }
+
+        // Process Games
+        if (gamesCsv) {
+            onProgress('Parsing Games CSV...');
+            const parsed = Papa.parse(gamesCsv, { header: true, skipEmptyLines: true });
+            const gameRows = (parsed.data as GameCsvRow[]).map(row => ({
+                game_id: row.gameId,
+                tournament_id: row.tournamentId,
+                main_player_id: row.mainPlayerId,
+                partner_id: row.partnerId,
+                opponent1_id: row.opponent1Id,
+                opponent2_id: row.opponent2Id,
+                set1_self: parseInt(row.set1Self ?? '0', 10),
+                set1_opp: parseInt(row.set1Opp ?? '0', 10),
+                set2_self: parseInt(row.set2Self ?? '0', 10),
+                set2_opp: parseInt(row.set2Opp ?? '0', 10),
+                set3_self: parseInt(row.set3Self ?? '0', 10),
+                set3_opp: parseInt(row.set3Opp ?? '0', 10),
+                set4_self: parseInt(row.set4Self ?? '0', 10),
+                set4_opp: parseInt(row.set4Opp ?? '0', 10),
+                set5_self: parseInt(row.set5Self ?? '0', 10),
+                set5_opp: parseInt(row.set5Opp ?? '0', 10),
+                tb_self: parseInt(row.tbSelf ?? '0', 10),
+                tb_opp: parseInt(row.tbOpp ?? '0', 10),
+                format: row.format,
+                score: row.score,
+                result: row.result,
+                memo: row.memo,
+                external_game_id: row.externalGameId,
+                created_at: row.createdAt ? new Date(parseInt(row.createdAt, 10)).toISOString() : null
+            })).filter(r => r.game_id && r.tournament_id);
+
+            onProgress(`Uploading ${gameRows.length} Games...`);
+            const { error } = await supabase.from('games').upsert(
+                gameRows,
+                { onConflict: 'game_id' }
+            );
+            if (error) throw new Error(`Game Upload Error: ${error.message}`);
+        }
+
         onProgress('Upload Complete!');
         return true;
     } catch (error: unknown) {
@@ -157,3 +270,4 @@ export const parseAndUploadZip = async (file: File, onProgress: (msg: string) =>
         return false;
     }
 };
+
