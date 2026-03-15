@@ -221,7 +221,6 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
           </div>
           <div>
             <h3 className="text-xl font-black text-gray-900 tracking-tight">大会記録・戦績表</h3>
-            <p className="text-sm text-gray-500 font-medium">Tournament History & Match Analysis</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -348,7 +347,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                 <div className="bg-gray-50 border-x-4 border-b-4 border-gray-900 rounded-b-[2rem] p-8 animate-in slide-in-from-top-2 duration-300 shadow-2xl mb-8">
                                                     <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-200">
                                                         <h5 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em] flex items-center gap-2">
-                                                            <LayoutGrid size={16} className="text-tennis-green-600" /> Match History / 試合記録
+                                                            <LayoutGrid size={16} className="text-tennis-green-600" /> 試合記録
                                                         </h5>
                                                         <button 
                                                             disabled={isProcessing}
