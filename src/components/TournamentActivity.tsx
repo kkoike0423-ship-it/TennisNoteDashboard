@@ -257,15 +257,15 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="col-span-1 md:col-span-2">
                     <label className="block text-[10px] font-black text-tennis-green-600 uppercase tracking-widest mb-2">大会名</label>
-                    <input disabled={isProcessing} type="text" className="w-full px-5 py-3 rounded-2xl border-2 border-tennis-green-100 outline-none transition-all disabled:opacity-50" placeholder="例：東京都ジュニア選手権" value={newTournament.name} onChange={e => setNewTournament({...newTournament, name: e.target.value})} />
+                    <input disabled={isProcessing} type="text" className="w-full px-5 py-3 rounded-2xl border-2 border-tennis-green-100 outline-none transition-all disabled:opacity-50 bg-gray-50" placeholder="例：東京都ジュニア選手権" value={newTournament.name} onChange={e => setNewTournament({...newTournament, name: e.target.value})} />
                 </div>
               <div>
                 <label className="block text-[10px] font-black text-tennis-green-600 uppercase tracking-widest mb-2">開催日</label>
-                <input disabled={isProcessing} type="date" className="w-full px-5 py-3 rounded-2xl border-2 border-tennis-green-100 outline-none disabled:opacity-50" value={newTournament.date} onChange={e => setNewTournament({...newTournament, date: e.target.value})} />
+                <input disabled={isProcessing} type="date" className="w-full px-5 py-3 rounded-2xl border-2 border-tennis-green-100 outline-none disabled:opacity-50 bg-gray-50" value={newTournament.date} onChange={e => setNewTournament({...newTournament, date: e.target.value})} />
               </div>
               <div>
                 <label className="block text-[10px] font-black text-tennis-green-600 uppercase tracking-widest mb-2">会場 / 場所</label>
-                <input disabled={isProcessing} type="text" className="w-full px-5 py-3 rounded-2xl border-2 border-tennis-green-100 outline-none disabled:opacity-50" value={newTournament.location} onChange={e => setNewTournament({...newTournament, location: e.target.value})} />
+                <input disabled={isProcessing} type="text" className="w-full px-5 py-3 rounded-2xl border-2 border-tennis-green-100 outline-none disabled:opacity-50 bg-gray-50" value={newTournament.location} onChange={e => setNewTournament({...newTournament, location: e.target.value})} />
               </div>
             </div>
             <button disabled={isProcessing} onClick={handleAddTournament} className="mt-8 w-full py-4 bg-emerald-600 text-white rounded-2xl font-black hover:bg-emerald-700 shadow-xl disabled:opacity-50 flex justify-center items-center gap-2">
@@ -446,7 +446,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                                 <div>
                                                                     <label className="block text-xs font-black text-white/30 uppercase tracking-[0.3em] mb-4">Opponent Selection / 対戦相手</label>
                                                                     <div className="relative">
-                                                                        <input disabled={isProcessing} type="text" className="w-full px-8 py-5 bg-white/5 border-2 border-white/10 rounded-2xl focus:border-tennis-green-400 outline-none pr-14 text-lg font-bold transition-all disabled:opacity-50" placeholder="対戦相手の氏名を検索..." value={opponentSearch} onChange={e => searchOpponents(e.target.value)} />
+                                                                        <input disabled={isProcessing} type="text" className="w-full px-8 py-5 bg-white/10 border-2 border-white/10 rounded-2xl focus:border-tennis-green-400 outline-none pr-14 text-lg font-bold transition-all disabled:opacity-50" placeholder="対戦相手の氏名を検索..." value={opponentSearch} onChange={e => searchOpponents(e.target.value)} />
                                                                         <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-white/20" size={24} />
                                                                         {opponentSuggestions.length > 0 && !isProcessing && (
                                                                         <div className="absolute top-full left-0 w-full mt-4 bg-white text-gray-900 rounded-[2rem] shadow-3xl z-50 overflow-hidden max-h-80 overflow-y-auto border-4 border-gray-900">
@@ -493,13 +493,13 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                                     </div>
                                                                     <div>
                                                                         <label className="block text-xs font-black text-white/30 uppercase tracking-[0.3em] mb-5">Custom Score / スコア修正</label>
-                                                                        <input disabled={isProcessing} type="text" className="w-full px-8 py-5 bg-white/5 border-2 border-white/10 rounded-2xl focus:border-tennis-green-400 outline-none text-base font-bold disabled:opacity-50" value={editingGame.game.score || ''} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, score: e.target.value}})} />
+                                                                        <input disabled={isProcessing} type="text" className="w-full px-8 py-5 bg-white/10 border-2 border-white/10 rounded-2xl focus:border-tennis-green-400 outline-none text-base font-bold disabled:opacity-50" value={editingGame.game.score || ''} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, score: e.target.value}})} />
                                                                     </div>
                                                                 </div>
 
                                                                 <div>
                                                                     <label className="block text-xs font-black text-white/30 uppercase tracking-[0.3em] mb-5">Post-Match Memo / 分析・感想</label>
-                                                                    <textarea disabled={isProcessing} className="w-full px-8 py-6 bg-white/5 border-2 border-white/10 rounded-[2rem] focus:border-tennis-green-400 outline-none h-48 resize-none text-base font-medium leading-relaxed disabled:opacity-50" placeholder="この試合の振り返りや、次の課題などを入力してください..." value={editingGame.game.memo || ''} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, memo: e.target.value}})}></textarea>
+                                                                    <textarea disabled={isProcessing} className="w-full px-8 py-6 bg-white/10 border-2 border-white/10 rounded-[2rem] focus:border-tennis-green-400 outline-none h-48 resize-none text-base font-medium leading-relaxed disabled:opacity-50" placeholder="この試合の振り返りや、次の課題などを入力してください..." value={editingGame.game.memo || ''} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, memo: e.target.value}})}></textarea>
                                                                 </div>
                                                             </div>
 

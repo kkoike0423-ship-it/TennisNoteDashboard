@@ -277,7 +277,7 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
             <div className="relative mb-6">
                 <Search className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
                 <input
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tennis-green-500 focus:border-transparent outline-none transition-all bg-white/70"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tennis-green-500 focus:border-transparent outline-none transition-all bg-gray-50"
                     type="text"
                     placeholder="名前、チーム、またはIDで検索 (例: 田中, TN-1, ライズ)"
                     value={query}
