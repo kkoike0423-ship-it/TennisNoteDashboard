@@ -306,7 +306,6 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                                     <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center min-w-[50px]">順位</th>
                                     <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest min-w-[140px]">選手名 / 所属</th>
                                     <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right min-w-[80px]">ポイント</th>
-                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center min-w-[100px]">カテゴリー</th>
                                     <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center min-w-[80px]">登録</th>
                                 </tr>
                             </thead>
@@ -334,14 +333,6 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                                                 </span>
                                                 <span className="text-[10px] text-gray-400 font-bold ml-1 italic shrink-0">pt</span>
                                             </div>
-                                        </td>
-                                        <td className="px-3 py-5 text-center">
-                                            <span className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold border whitespace-nowrap ${item.player.category === selectedCategory
-                                                    ? 'bg-tennis-green-50 text-tennis-green-700 border-tennis-green-100'
-                                                    : 'bg-orange-50 text-orange-700 border-orange-100'
-                                                }`}>
-                                                {item.player.category}
-                                            </span>
                                         </td>
                                         <td className="px-3 py-5">
                                             <div className="flex items-center justify-center">
