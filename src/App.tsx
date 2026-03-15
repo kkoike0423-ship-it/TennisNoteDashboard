@@ -178,7 +178,7 @@ function App() {
             className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'overview' ? 'bg-tennis-green-50 text-tennis-green-700' : 'text-gray-600 hover:bg-tennis-green-50'}`}
           >
             <BarChart3 className="w-5 h-5 mr-3" />
-            マイダッシュボード
+            ダッシュボード
           </button>
 
           <button
@@ -277,7 +277,7 @@ function App() {
               <Menu size={24} />
             </button>
             <h1 className="text-lg sm:text-xl font-black text-gray-800 tracking-tight truncate max-w-[120px] sm:max-w-none whitespace-nowrap">
-              {activeMenu === 'overview' ? 'My Dash' :
+              {activeMenu === 'overview' ? 'ダッシュボード' :
                 activeMenu === 'scout' ? 'Scouting' :
                   activeMenu === 'draw' ? 'Draw Analysis' :
                     activeMenu === 'data' ? 'Ranking' : 'Settings'}
