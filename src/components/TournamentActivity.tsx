@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabaseClient';
-import { Trophy, MapPin, Plus, Trash2, Edit2, ChevronDown, ChevronUp, X, MessageSquare, User, Hash, Search, LayoutGrid, Info } from 'lucide-react';
+import { Trophy, MapPin, Plus, Trash2, Edit2, ChevronDown, ChevronUp, X, MessageSquare, User, Search, LayoutGrid, Info } from 'lucide-react';
 import type { Tournament, Game, Player } from '../types/database';
 
 interface GameWithOpponent extends Game {
   opponent_info?: Player | null;
+  opponent_rank?: number | null;
 }
 
 interface TournamentWithGames extends Tournament {
@@ -68,13 +69,33 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
         .select('*')
         .in('player_id', opponentIds);
 
-      const combined = (tData || []).map(t => ({
-        ...t,
-        games: (gData || []).filter(g => g.tournament_id === t.tournament_id).map(g => ({
-          ...g,
-          opponent_info: (pData || []).find(p => p.player_id === g.opponent1_id)
-        }))
-      }));
+      const tournamentMonths = Array.from(new Set((tData || []).map(t => t.date ? t.date.substring(0, 7) : null).filter(Boolean)));
+      
+      const { data: rData } = await supabase
+        .from('category_rankings')
+        .select('player_id, year_month, rank, category')
+        .in('player_id', opponentIds)
+        .in('year_month', tournamentMonths);
+
+      const combined = (tData || []).map(t => {
+        const tMonth = t.date ? t.date.substring(0, 7) : null;
+        return {
+          ...t,
+          games: (gData || []).filter(g => g.tournament_id === t.tournament_id).map(g => {
+            const opponent = (pData || []).find(p => p.player_id === g.opponent1_id);
+            const ranking = (rData || []).find(r => 
+              r.player_id === g.opponent1_id && 
+              r.year_month === tMonth && 
+              r.category === opponent?.category
+            );
+            return {
+              ...g,
+              opponent_info: opponent,
+              opponent_rank: ranking?.rank
+            };
+          })
+        };
+      });
 
       setTournaments(combined);
     } catch (err) {
@@ -216,11 +237,11 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
       {/* Header */}
       <div className="p-4 sm:p-8 border-b border-gray-50 bg-white flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-tennis-green-100 rounded-[1.25rem] flex items-center justify-center text-tennis-green-600 shadow-inner">
-            <Trophy size={28} />
+          <div className="w-10 h-10 sm:w-14 sm:h-14 bg-tennis-green-100 rounded-xl sm:rounded-[1.25rem] flex items-center justify-center text-tennis-green-600 shadow-inner">
+            <Trophy size={20} className="sm:w-7 sm:h-7" />
           </div>
           <div>
-            <h3 className="text-xl font-black text-gray-900 tracking-tight">大会記録・戦績表</h3>
+            <h3 className="text-base sm:text-xl font-black text-gray-900 tracking-tight">大会記録・戦績表</h3>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -306,14 +327,14 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                         onClick={() => setExpandedTournament(expandedTournament === t.tournament_id ? null : t.tournament_id)}
                                         className={`group cursor-pointer transition-all ${expandedTournament === t.tournament_id ? 'bg-gray-900 text-white shadow-2xl scale-[1.01] z-10 relative' : 'bg-white hover:bg-gray-50 text-gray-900 border border-gray-100 shadow-sm'}`}
                                     >
-                                        <td className="px-2 py-6 sm:px-6 first:rounded-l-2xl font-black text-sm">
+                                        <td className="px-2 py-3 sm:py-6 sm:px-6 first:rounded-l-2xl font-black text-sm">
                                             {(() => {
                                                 const d = t.date || t.tournament_date || '';
                                                 const parts = d.split(/[-/]/);
                                                 return parts.length >= 3 ? `${parts[2]}日` : '--';
                                             })()}
                                         </td>
-                                        <td className="px-2 py-6 sm:px-6 text-sm font-black tracking-tight leading-snug">
+                                        <td className="px-2 py-3 sm:py-6 sm:px-6 text-sm font-black tracking-tight leading-snug">
                                             <div className="flex flex-col gap-1.5">
                                                 <span className="break-words">{t.name}</span>
                                                 <div className={`flex items-center gap-1.5 text-[0.75rem] font-bold ${expandedTournament === t.tournament_id ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -322,7 +343,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-2 py-6 sm:px-6 text-center last:rounded-r-2xl">
+                                        <td className="px-2 py-3 sm:py-6 sm:px-6 text-center last:rounded-r-2xl">
                                             <div className="flex items-center justify-center gap-4">
                                                 <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black ${expandedTournament === t.tournament_id ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-500'}`}>
                                                     {t.games.length}
@@ -344,8 +365,8 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                     {expandedTournament === t.tournament_id && (
                                         <tr>
                                             <td colSpan={3} className="p-0">
-                                                <div className="bg-gray-50 border-x-4 border-b-4 border-gray-900 rounded-b-[2rem] p-8 animate-in slide-in-from-top-2 duration-300 shadow-2xl mb-8">
-                                                    <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-200">
+                                                <div className="bg-gray-50 border-x-4 border-b-4 border-gray-900 rounded-b-[2rem] p-4 sm:p-6 animate-in slide-in-from-top-2 duration-300 shadow-2xl mb-8">
+                                                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
                                                         <h5 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em] flex items-center gap-2">
                                                             <LayoutGrid size={16} className="text-tennis-green-600" /> 試合記録
                                                         </h5>
@@ -358,63 +379,70 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                         </button>
                                                     </div>
 
-                                                    <div className="flex flex-col gap-6">
+                                                    <div className="flex flex-col gap-4">
                                                         {t.games.map((g, idx) => (
-                                                            <div key={g.game_id} className="p-4 sm:p-6 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all group/item relative">
-                                                                <div className="absolute top-6 left-0 w-1.5 h-10 bg-tennis-green-500 rounded-r-full group-hover/item:h-16 transition-all duration-300"></div>
+                                                            <div key={g.game_id} className="p-3 sm:p-5 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all group/item relative">
+                                                                <div className="absolute top-4 left-0 w-1 h-8 bg-tennis-green-500 rounded-r-full group-hover/item:h-12 transition-all duration-300"></div>
                                                                 
-                                                                <div className="flex items-start justify-between">
-                                                                    <div className="flex items-start gap-4 sm:gap-6 flex-1">
-                                                                        <div className="flex flex-col items-center gap-1 w-8 sm:w-12 shrink-0">
-                                                                            <div className="text-[9px] sm:text-xs font-black text-gray-300 uppercase tracking-tighter">Match</div>
-                                                                            <div className="text-base sm:text-lg font-black text-gray-900 font-mono tracking-tighter leading-none">{idx + 1}</div>
+                                                                <div className="flex items-start justify-between gap-2">
+                                                                    <div className="flex items-start gap-2 sm:gap-4 flex-1 min-w-0">
+                                                                        {/* Compact Match Number */}
+                                                                        <div className="flex flex-col items-center justify-center w-6 sm:w-10 shrink-0 pt-1">
+                                                                            <div className="text-[8px] font-black text-gray-300 uppercase tracking-tighter">M</div>
+                                                                            <div className="text-sm sm:text-base font-black text-gray-900 font-mono tracking-tighter leading-none">{idx + 1}</div>
                                                                         </div>
                                                                         
                                                                         <div className="flex-1 min-w-0">
-                                                                            <div className="flex flex-wrap items-center gap-3 mb-3">
-                                                                                <div className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-sm ${g.result === 'Win' ? 'bg-emerald-600 text-white' : 'bg-rose-500 text-white'}`}>
-                                                                                    {g.result === 'Win' ? 'Winner' : 'Loser'}
+                                                                            {/* Result & Name Line */}
+                                                                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                                                                                <div className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest ${g.result === 'Win' ? 'bg-emerald-600 text-white' : 'bg-rose-500 text-white'}`}>
+                                                                                    {g.result === 'Win' ? 'Win' : 'Loss'}
                                                                                 </div>
-                                                                                <p className="text-base font-black text-gray-900 tracking-tight">vs {g.opponent_info?.full_name || g.opponent1_id || '---'}</p>
+                                                                                <div className="text-sm sm:text-base font-black text-gray-900 tracking-tight truncate flex items-center gap-1">
+                                                                                    <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-400 font-bold shrink-0">
+                                                                                        {g.opponent_info?.category || '---'}
+                                                                                    </span>
+                                                                                    <span className="truncate">{g.opponent_info?.full_name || g.opponent1_id || '---'}</span>
+                                                                                    {g.opponent_rank && (
+                                                                                        <span className="text-[11px] text-tennis-green-600 font-black shrink-0 ml-1">
+                                                                                            ({g.opponent_rank}位)
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
                                                                             </div>
                                                                             
-                                                                            <div className="flex flex-wrap items-center gap-6 mb-4">
-                                                                                <div className="flex items-center gap-2">
-                                                                                    <User size={14} className="text-gray-300" />
-                                                                                    <span className="text-xs font-bold text-gray-500">{g.opponent_info?.team || 'Free / No Team'}</span>
-                                                                                </div>
-                                                                                <div className="flex items-center gap-2 text-tennis-green-600">
-                                                                                    <Trophy size={14} />
-                                                                                    <span className="text-xs font-black uppercase tracking-widest">{g.opponent_info?.category || '---'}</span>
-                                                                                </div>
-                                                                                <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-lg border border-gray-100">
-                                                                                    <Hash size={14} className="text-gray-400" />
-                                                                                    <span className="text-xs font-black text-gray-900">{g.opponent_info?.ranking_point.toLocaleString() || '0'} Points</span>
+                                                                            {/* Team Info Row */}
+                                                                            <div className="flex items-center gap-3 mb-3">
+                                                                                <div className="flex items-center gap-1 min-w-0">
+                                                                                    <User size={12} className="text-gray-300 shrink-0" />
+                                                                                    <span className="text-[11px] font-bold text-gray-400 truncate">{g.opponent_info?.team || '---'}</span>
                                                                                 </div>
                                                                             </div>
 
-                                                                            <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-inner">
-                                                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] [writing-mode:vertical-lr] border-r border-gray-200 pr-2 mr-2">Score</span>
-                                                                                <div className="font-mono text-xl font-black text-gray-900 tracking-widest">
+                                                                            {/* Score Row - More compact */}
+                                                                            <div className="flex items-center gap-3 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100 inline-flex">
+                                                                                <span className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] border-r border-gray-200 pr-2">Score</span>
+                                                                                <div className="font-mono text-sm sm:text-base font-black text-gray-900 tracking-widest">
                                                                                     {g.score || '--'}
                                                                                 </div>
                                                                             </div>
                                                                         </div>
                                                                     </div>
                                                                     
-                                                                    <div className="flex flex-col gap-2">
-                                                                        <button disabled={isProcessing} onClick={() => handleEditGame(t.tournament_id, g)} className="p-3 text-gray-300 hover:text-tennis-green-600 hover:bg-gray-50 rounded-2xl transition-all shadow-sm disabled:opacity-30">
-                                                                            <Edit2 size={18} />
+                                                                    {/* Buttons - More compact */}
+                                                                    <div className="flex flex-col gap-1 shrink-0">
+                                                                        <button disabled={isProcessing} onClick={() => handleEditGame(t.tournament_id, g)} className="p-2 text-gray-300 hover:text-tennis-green-600 hover:bg-gray-100 rounded-xl transition-all disabled:opacity-30">
+                                                                            <Edit2 size={16} />
                                                                         </button>
-                                                                        <button disabled={isProcessing} onClick={() => handleDeleteGame(g.game_id)} className="p-3 text-gray-300 hover:text-rose-500 hover:bg-gray-50 rounded-2xl transition-all shadow-sm disabled:opacity-30 opacity-0 group-hover/item:opacity-100">
-                                                                            <Trash2 size={18} />
+                                                                        <button disabled={isProcessing} onClick={() => handleDeleteGame(g.game_id)} className="p-2 text-gray-300 hover:text-rose-500 hover:bg-gray-100 rounded-xl transition-all disabled:opacity-30 opacity-0 group-hover/item:opacity-100">
+                                                                            <Trash2 size={16} />
                                                                         </button>
                                                                     </div>
                                                                 </div>
 
                                                                 {g.memo && (
-                                                                    <div className="mt-6 p-5 bg-tennis-green-50 rounded-2xl text-sm text-gray-700 border border-tennis-green-100 flex gap-4 relative">
-                                                                        <MessageSquare size={20} className="text-tennis-green-500 shrink-0 mt-1" />
+                                                                    <div className="mt-3 p-3 bg-tennis-green-50 rounded-xl text-[11px] text-gray-600 border border-tennis-green-100 flex gap-2 relative">
+                                                                        <MessageSquare size={14} className="text-tennis-green-500 shrink-0 mt-0.5" />
                                                                         <p className="leading-relaxed font-medium whitespace-pre-wrap flex-1">{g.memo}</p>
                                                                     </div>
                                                                 )}
