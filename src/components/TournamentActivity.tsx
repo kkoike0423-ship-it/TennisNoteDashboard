@@ -226,13 +226,13 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-gray-100 p-1 rounded-xl">
-             {[10, 20, 50].map(count => (
+             {[10, 30, 50].map(count => (
                <button 
                 key={count} 
                 onClick={() => setDisplayCount(count)}
                 className={`px-4 py-2 text-xs font-black rounded-lg transition-all ${displayCount === count ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                >
-                 {count}件
+                 {count}
                </button>
              ))}
           </div>
@@ -242,7 +242,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
             disabled={isProcessing}
           >
             {isProcessing ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Plus size={18} />}
-            大会を追加
+            大会
           </button>
         </div>
       </div>
@@ -297,8 +297,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                             <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                 <th className="px-6 py-4 text-left w-24">日付</th>
                                 <th className="px-6 py-4 text-left">大会名 / 開催地</th>
-                                <th className="px-6 py-4 text-center w-24">試合数</th>
-                                <th className="px-6 py-4 text-right w-20">操作</th>
+                                <th className="px-6 py-4 text-center w-24 last:rounded-r-2xl">試合数</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -324,28 +323,28 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-6 text-center">
-                                            <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black ${expandedTournament === t.tournament_id ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                                                {t.games.length}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-6 last:rounded-r-2xl text-right">
-                                            <div className="flex items-center justify-end gap-3">
-                                                <button 
-                                                    disabled={isProcessing}
-                                                    onClick={(e) => { e.stopPropagation(); handleDeleteTournament(t.tournament_id); }} 
-                                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-rose-500 hover:bg-rose-50 rounded-lg disabled:opacity-30"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                                {expandedTournament === t.tournament_id ? <ChevronUp size={20} /> : <ChevronDown size={20} className="text-gray-300" />}
+                                        <td className="px-6 py-6 text-center last:rounded-r-2xl">
+                                            <div className="flex items-center justify-center gap-4">
+                                                <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black ${expandedTournament === t.tournament_id ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                                                    {t.games.length}
+                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    {expandedTournament === t.tournament_id ? <ChevronUp size={16} /> : <ChevronDown size={16} className={expandedTournament === t.tournament_id ? 'text-white/30' : 'text-gray-300'} />}
+                                                    <button 
+                                                        disabled={isProcessing}
+                                                        onClick={(e) => { e.stopPropagation(); handleDeleteTournament(t.tournament_id); }} 
+                                                        className={`p-1.5 rounded-lg transition-all ${expandedTournament === t.tournament_id ? 'text-rose-400 hover:bg-white/10' : 'opacity-0 group-hover:opacity-100 text-rose-500 hover:bg-rose-50'}`}
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
                                     
                                     {expandedTournament === t.tournament_id && (
                                         <tr>
-                                            <td colSpan={4} className="p-0">
+                                            <td colSpan={3} className="p-0">
                                                 <div className="bg-gray-50 border-x-4 border-b-4 border-gray-900 rounded-b-[2rem] p-8 animate-in slide-in-from-top-2 duration-300 shadow-2xl mb-8">
                                                     <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-200">
                                                         <h5 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em] flex items-center gap-2">
