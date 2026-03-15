@@ -345,7 +345,7 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                                                         : 'bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white'
                                                     }`}
                                                 >
-                                                    {watchedIds.has(item.player.player_id) ? '解除' : 'ライバル'}
+                                                    {watchedIds.has(item.player.player_id) ? '解除' : '対戦相手'}
                                                 </button>
                                             </div>
                                         </td>

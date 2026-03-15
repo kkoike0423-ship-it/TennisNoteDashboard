@@ -186,7 +186,7 @@ function App() {
             className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'scout' ? 'bg-tennis-green-50 text-tennis-green-700' : 'text-gray-600 hover:bg-tennis-green-50'}`}
           >
             <Search className="w-5 h-5 mr-3" />
-            スカウト
+            対戦相手
           </button>
 
           <button
@@ -278,7 +278,7 @@ function App() {
             </button>
             <h1 className="text-lg sm:text-xl font-black text-gray-800 tracking-tight truncate max-w-[120px] sm:max-w-none whitespace-nowrap">
               {activeMenu === 'overview' ? 'ダッシュボード' :
-                activeMenu === 'scout' ? 'Scouting' :
+                activeMenu === 'scout' ? 'Opponents' :
                   activeMenu === 'draw' ? 'Draw Analysis' :
                     activeMenu === 'data' ? 'Ranking' : 'Settings'}
             </h1>
@@ -410,7 +410,7 @@ function App() {
             className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 min-w-0 ${activeMenu === 'scout' ? 'text-tennis-green-600 scale-105 font-bold' : 'text-gray-400'}`}
           >
             <Search size={20} className="sm:size-6" strokeWidth={activeMenu === 'scout' ? 2.5 : 2} />
-            <span className="text-[9px] sm:text-[10px] truncate w-full text-center">スカウト</span>
+            <span className="text-[9px] sm:text-[10px] truncate w-full text-center">対戦相手</span>
           </button>
 
           <button

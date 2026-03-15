@@ -132,7 +132,7 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
             const playerName = playerToRemove ? (playerToRemove.full_name || `${playerToRemove.last_name} ${playerToRemove.first_name}`) : playerId;
             
             const confirmMsg = playerType === 'managed' 
-                ? `「${playerName}」を管理リストから削除しますか？\n紐づく対戦相手（ライバル）の情報もすべて削除されます。`
+                ? `「${playerName}」を管理リストから削除しますか？\n紐づく対戦相手の情報もすべて削除されます。`
                 : `「${playerName}」をリストから削除しますか？`;
 
             if (!window.confirm(confirmMsg)) {

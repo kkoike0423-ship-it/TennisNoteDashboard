@@ -179,7 +179,7 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                     <Search className="text-gray-400" size={20} />
                     <input 
                         type="search" 
-                        placeholder="ライバル選手を検索して登録..." 
+                        placeholder="対戦相手を検索して登録..." 
                         className="flex-1 bg-transparent outline-none text-gray-800 placeholder:text-gray-400 font-medium"
                         value={searchQuery}
                         onChange={(e) => handleSearch(e.target.value)}
@@ -244,7 +244,7 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg font-black text-gray-800 flex items-center gap-2">
                             <Star className="text-amber-400" fill="currentColor" size={20} />
-                            登録ライバル一覧
+                            登録対戦相手一覧
                             <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-1 rounded-full ml-2">{rivals.length} / 10</span>
                         </h3>
                     </div>
@@ -325,7 +325,7 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                                     <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-300">
                                         <Search size={24} />
                                     </div>
-                                    <h4 className="text-sm font-bold text-gray-500">ライバルが未登録です</h4>
+                                    <h4 className="text-sm font-bold text-gray-500">対戦相手が未登録です</h4>
                                     <p className="text-xs text-gray-400 mt-1">上の検索窓から選手を登録しましょう。</p>
                                 </div>
                             )}
@@ -336,7 +336,7 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                 <div className="bg-white rounded-3xl shadow-sm border border-tennis-green-50 overflow-hidden min-h-[400px] sm:min-h-[500px]">
                     <MultiPlayerChart 
                         playerType="opponent" 
-                        title="ライバル比較グラフ" 
+                        title="対戦相手比較グラフ" 
                         activeManagedPlayerId={activeManagedPlayerId}
                         showControls={false}
                     />
