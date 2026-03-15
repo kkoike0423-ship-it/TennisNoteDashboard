@@ -374,7 +374,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                                         
                                                                         <div className="flex-1 min-w-0">
                                                                             <div className="flex flex-wrap items-center gap-3 mb-3">
-                                                                                <div className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm ${g.result === 'Win' ? 'bg-tennis-green-600 text-white' : 'bg-rose-500 text-white'}`}>
+                                                                                <div className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm ${g.result === 'Win' ? 'bg-emerald-600 text-white' : 'bg-rose-500 text-white'}`}>
                                                                                     {g.result === 'Win' ? 'Winner' : 'Loser'}
                                                                                 </div>
                                                                                 <p className="text-base font-black text-gray-900 tracking-tight">vs {g.opponent_info?.full_name || g.opponent1_id || '---'}</p>
