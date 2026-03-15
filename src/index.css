@@ -39,6 +39,16 @@
 
 /* Base resets & styles matching old tailwind configuration */
 @layer base {
+  html {
+    /* 
+      18px (スマホでの最小値) 
+      4vw (画面幅に応じて可変)
+      20px (デスクトップ等での最大値)
+      これにより、低解像度のスマホでも読みやすく、かつ大きくなりすぎないように制御します
+    */
+    font-size: clamp(18px, 4vw, 20px);
+  }
+
   body {
     @apply bg-tennis-green-50 text-tennis-green-900 font-sans antialiased min-h-screen selection:bg-tennis-green-200 selection:text-tennis-green-900;
   }
