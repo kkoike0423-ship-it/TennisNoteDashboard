@@ -244,7 +244,7 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg font-black text-gray-800 flex items-center gap-2">
                             <Star className="text-amber-400" fill="currentColor" size={20} />
-                            登録対戦相手一覧
+                            対戦相手一覧
                             <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-1 rounded-full ml-2">{rivals.length} / 10</span>
                         </h3>
                     </div>
@@ -336,7 +336,7 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                 <div className="bg-white rounded-3xl shadow-sm border border-tennis-green-50 overflow-hidden min-h-[400px] sm:min-h-[500px]">
                     <MultiPlayerChart 
                         playerType="opponent" 
-                        title="対戦相手比較グラフ" 
+                        title="グラフ" 
                         activeManagedPlayerId={activeManagedPlayerId}
                         showControls={false}
                     />
