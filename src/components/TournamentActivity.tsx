@@ -318,7 +318,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                         <td className="px-6 py-6 text-sm font-black tracking-tight leading-snug">
                                             <div className="flex flex-col gap-1.5">
                                                 <span className="break-words">{t.name}</span>
-                                                <div className={`flex items-center gap-1.5 text-[11px] font-bold ${expandedTournament === t.tournament_id ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                <div className={`flex items-center gap-1.5 text-[0.75rem] font-bold ${expandedTournament === t.tournament_id ? 'text-gray-400' : 'text-gray-500'}`}>
                                                     <MapPin size={12} className="shrink-0" />
                                                     <span className="truncate">{t.location || '---'}</span>
                                                 </div>
@@ -368,18 +368,18 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                                 <div className="flex items-start justify-between">
                                                                     <div className="flex items-start gap-6 flex-1">
                                                                         <div className="flex flex-col items-center gap-2">
-                                                                            <div className="text-[10px] font-black text-gray-300 uppercase tracking-tighter">Match</div>
+                                                                            <div className="text-xs font-black text-gray-300 uppercase tracking-tighter">Match</div>
                                                                             <div className="text-lg font-black text-gray-900 font-mono tracking-tighter leading-none">{idx + 1}</div>
                                                                         </div>
                                                                         
                                                                         <div className="flex-1 min-w-0">
                                                                             <div className="flex flex-wrap items-center gap-3 mb-3">
-                                                                                <div className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm ${g.result === 'Win' ? 'bg-emerald-600 text-white' : 'bg-rose-500 text-white'}`}>
+                                                                                <div className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-sm ${g.result === 'Win' ? 'bg-emerald-600 text-white' : 'bg-rose-500 text-white'}`}>
                                                                                     {g.result === 'Win' ? 'Winner' : 'Loser'}
                                                                                 </div>
                                                                                 <p className="text-base font-black text-gray-900 tracking-tight">vs {g.opponent_info?.full_name || g.opponent1_id || '---'}</p>
                                                                                 {g.opponent_info && (
-                                                                                    <span className="px-2 py-0.5 bg-tennis-green-50 text-tennis-green-700 rounded-lg text-[10px] font-black border border-tennis-green-100">Registered</span>
+                                                                                    <span className="px-2 py-0.5 bg-tennis-green-50 text-tennis-green-700 rounded-lg text-xs font-black border border-tennis-green-100">Registered</span>
                                                                                 )}
                                                                             </div>
                                                                             

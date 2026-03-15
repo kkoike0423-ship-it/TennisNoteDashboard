@@ -436,7 +436,7 @@ export default function MultiPlayerChart({
                             />
                             <Legend 
                                 iconType="circle" 
-                                wrapperStyle={{ paddingTop: '30px', fontSize: '10px', fontWeight: 'bold' }} 
+                                wrapperStyle={{ paddingTop: '30px', fontSize: '12px', fontWeight: 'bold' }} 
                             />
                             
                             {playerLines.map((playerId) => {
