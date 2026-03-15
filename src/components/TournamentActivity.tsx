@@ -267,9 +267,9 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
         </div>
       </div>
 
-      <div className="p-4 sm:p-8">
+      <div className="p-2 sm:p-8">
         {isAddingTournament && (
-          <div className="mb-10 p-8 bg-tennis-green-50 rounded-[2rem] border-2 border-tennis-green-100 animate-in slide-in-from-top-4 duration-300">
+          <div className="mb-6 p-4 sm:p-8 bg-tennis-green-50 rounded-[2rem] border-2 border-tennis-green-100 animate-in slide-in-from-top-4 duration-300">
             <div className="flex justify-between items-center mb-6">
               <h4 className="font-black text-tennis-green-800 text-lg">新規大会の追加</h4>
               <button disabled={isProcessing} onClick={() => setIsAddingTournament(false)} className="w-10 h-10 flex items-center justify-center bg-white rounded-full text-tennis-green-400 shadow-sm hover:text-rose-500 transition-colors"><X size={20} /></button>
@@ -315,9 +315,9 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                     <table className="w-full border-separate border-spacing-y-2">
                         <thead>
                             <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                <th className="px-2 py-4 sm:px-6 text-left w-[18%]">日付</th>
-                                <th className="px-2 py-4 sm:px-6 text-left">大会名 / 開催地</th>
-                                <th className="px-2 py-4 sm:px-6 text-center w-[22%] last:rounded-r-2xl">試合数</th>
+                                <th className="px-1 py-4 sm:px-6 text-left w-[18%]">日付</th>
+                                <th className="px-1 py-4 sm:px-6 text-left">大会名 / 開催地</th>
+                                <th className="px-1 py-4 sm:px-6 text-center w-[22%] last:rounded-r-2xl">試合数</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -327,14 +327,14 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                         onClick={() => setExpandedTournament(expandedTournament === t.tournament_id ? null : t.tournament_id)}
                                         className={`group cursor-pointer transition-all ${expandedTournament === t.tournament_id ? 'bg-gray-900 text-white shadow-2xl scale-[1.01] z-10 relative' : 'bg-white hover:bg-gray-50 text-gray-900 border border-gray-100 shadow-sm'}`}
                                     >
-                                        <td className="px-2 py-3 sm:py-6 sm:px-6 first:rounded-l-2xl font-black text-sm">
+                                        <td className="px-1 py-3 sm:py-6 sm:px-6 first:rounded-l-2xl font-black text-sm">
                                             {(() => {
                                                 const d = t.date || t.tournament_date || '';
                                                 const parts = d.split(/[-/]/);
                                                 return parts.length >= 3 ? `${parts[2]}日` : '--';
                                             })()}
                                         </td>
-                                        <td className="px-2 py-3 sm:py-6 sm:px-6 text-sm font-black tracking-tight leading-snug">
+                                        <td className="px-1 py-3 sm:py-6 sm:px-6 text-sm font-black tracking-tight leading-snug">
                                             <div className="flex flex-col gap-1.5">
                                                 <span className="break-words">{t.name}</span>
                                                 <div className={`flex items-center gap-1.5 text-[0.75rem] font-bold ${expandedTournament === t.tournament_id ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -343,7 +343,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-2 py-3 sm:py-6 sm:px-6 text-center last:rounded-r-2xl">
+                                        <td className="px-1 py-3 sm:py-6 sm:px-6 text-center last:rounded-r-2xl">
                                             <div className="flex items-center justify-center gap-4">
                                                 <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black ${expandedTournament === t.tournament_id ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-500'}`}>
                                                     {t.games.length}

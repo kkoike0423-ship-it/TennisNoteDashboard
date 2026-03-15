@@ -17,32 +17,7 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
     const [ranks, setRanks] = useState<Record<string, number | null>>({});
     const [loading, setLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
-    const [hiddenPlayerIds, setHiddenPlayerIds] = useState<Set<string>>(new Set());
 
-    useEffect(() => {
-        const resetTimer = window.setTimeout(() => {
-            setHiddenPlayerIds(new Set());
-        }, 0);
-        window.dispatchEvent(new CustomEvent('player-visibility-changed', {
-            detail: { playerType, hiddenIds: [] }
-        }));
-        return () => window.clearTimeout(resetTimer);
-    }, [playerType, activeManagedPlayerId]);
-
-    const handleToggleVisibility = (playerId: string) => {
-        setHiddenPlayerIds(prev => {
-            const next = new Set(prev);
-            if (next.has(playerId)) {
-                next.delete(playerId);
-            } else {
-                next.add(playerId);
-            }
-            window.dispatchEvent(new CustomEvent('player-visibility-changed', {
-                detail: { playerType, hiddenIds: Array.from(next) }
-            }));
-            return next;
-        });
-    };
 
     // Fetch initial watched players
     useEffect(() => {
@@ -316,29 +291,7 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-6">
-                                    <label className="flex items-center cursor-pointer gap-2 group">
-                                        <div className={`relative w-12 h-6 transition-colors rounded-full flex items-center px-1 ${!hiddenPlayerIds.has(player.player_id)
-                                            ? 'bg-tennis-green-500'
-                                            : 'bg-gray-200'
-                                            }`}>
-                                            <input
-                                                type="checkbox"
-                                                className="sr-only"
-                                                checked={!hiddenPlayerIds.has(player.player_id)}
-                                                onChange={() => handleToggleVisibility(player.player_id)}
-                                            />
-                                            <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${!hiddenPlayerIds.has(player.player_id) ? 'translate-x-6' : 'translate-x-0'
-                                                }`}></div>
-                                        </div>
-                                        <span className={`text-xs font-bold transition-colors ${!hiddenPlayerIds.has(player.player_id) ? 'text-tennis-green-600' : 'text-gray-400'
-                                            }`}>
-                                            {!hiddenPlayerIds.has(player.player_id) ? '表示中' : '非表示'}
-                                        </span>
-                                    </label>
-
-                                    <div className="w-px h-8 bg-gray-100 hidden sm:block"></div>
-
+                                <div className="flex items-center">
                                     <button
                                         onClick={() => handleToggleWatch(player.player_id)}
                                         disabled={actionLoading === player.player_id}
