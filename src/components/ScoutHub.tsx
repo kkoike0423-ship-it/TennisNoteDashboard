@@ -175,7 +175,7 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
     return (
         <div className="max-w-5xl mx-auto space-y-8 pb-32">
             <div className="relative">
-                <div className="glass-panel p-4 flex items-center gap-3">
+                <div className="glass-panel p-4 flex items-center gap-3 bg-gray-50">
                     <Search className="text-gray-400" size={20} />
                     <input 
                         type="search" 
