@@ -355,7 +355,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                             onClick={() => handleAddGame(t.tournament_id)} 
                                                             className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-black hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg active:scale-95 disabled:opacity-50"
                                                         >
-                                                            <Plus size={16} /> 試合を追加
+                                                            <Plus size={16} />
                                                         </button>
                                                     </div>
 
