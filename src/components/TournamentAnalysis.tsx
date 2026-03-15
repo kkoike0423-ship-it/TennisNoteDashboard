@@ -615,9 +615,6 @@ export default function TournamentAnalysis() {
                                                     </td>
                                                     <td className="px-6 py-5">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-700 font-bold shrink-0">
-                                                                {res.player?.last_name?.[0]}
-                                                            </div>
                                                             <div>
                                                                 <p className="font-bold text-gray-800">{res.player?.full_name}</p>
                                                                 <div className="flex items-center gap-2 mt-1">

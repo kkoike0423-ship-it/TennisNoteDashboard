@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, UserPlus, Star, Loader2, User, Trash2 } from "lucide-react";
+import { Search, UserPlus, Star, Loader2, Trash2 } from "lucide-react";
 import { supabase } from "../utils/supabaseClient";
 import MultiPlayerChart from "./MultiPlayerChart";
 
@@ -195,9 +195,6 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                             return (
                                 <div key={player.player_id} className="p-4 flex items-center justify-between hover:bg-tennis-green-50 transition-colors border-b border-gray-50 last:border-none">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-600 font-bold">
-                                            {player.last_name?.[0] || <User size={20} />}
-                                        </div>
                                         <div>
                                             <p className="font-bold text-gray-800">
                                                 {player.full_name}
@@ -277,13 +274,6 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                                             }`}
                                         >
                                             <div className="flex items-center gap-4 flex-1 min-w-0">
-                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl shrink-0 transition-colors ${
-                                                    hiddenRivalIds.has(rival.player_id)
-                                                    ? "bg-gray-200 text-gray-400"
-                                                    : "bg-tennis-green-100 text-tennis-green-600 group-hover:bg-tennis-green-50"
-                                                }`}>
-                                                    {rival.last_name?.[0]}
-                                                </div>
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex items-center gap-2">
                                                         <p className={`font-bold text-lg truncate ${

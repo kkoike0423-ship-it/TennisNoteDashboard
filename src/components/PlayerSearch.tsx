@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Trash2, Loader2, User } from 'lucide-react';
+import { Search, Plus, Trash2, Loader2 } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import type { Player } from '../types/database';
 
@@ -271,9 +271,6 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                         {watchedPlayersList.map((player) => (
                             <li key={player.player_id} className="p-4 flex items-center justify-between hover:bg-white transition-colors">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-700">
-                                        <User size={20} />
-                                    </div>
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
                                             <p className="font-semibold text-gray-800">{player.full_name || `${player.last_name} ${player.first_name}`}</p>
@@ -319,9 +316,6 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                         return (
                             <li key={player.player_id} className="py-3 flex items-center justify-between group">
                                 <div className="flex items-center gap-4 text-sm mt-1 text-gray-500">
-                                    <div className="w-10 h-10 rounded-full bg-tennis-green-100 flex items-center justify-center text-tennis-green-700">
-                                        <User size={20} />
-                                    </div>
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
                                             <p className="font-semibold text-gray-800 text-base">{player.full_name || `${player.last_name} ${player.first_name}`}</p>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../utils/supabaseClient';
-import { Trophy, MapPin, Plus, Trash2, Edit2, ChevronDown, ChevronUp, X, MessageSquare, User, Search, LayoutGrid, Info } from 'lucide-react';
+import { Trophy, MapPin, Plus, Trash2, Edit2, ChevronDown, ChevronUp, X, MessageSquare, Search, LayoutGrid, Info } from 'lucide-react';
 import type { Tournament, Game, Player } from '../types/database';
 
 interface GameWithOpponent extends Game {
@@ -414,7 +414,6 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                                             {/* Team Info Row */}
                                                                             <div className="flex items-center gap-3 mb-3">
                                                                                 <div className="flex items-center gap-1 min-w-0">
-                                                                                    <User size={12} className="text-gray-300 shrink-0" />
                                                                                     <span className="text-[11px] font-bold text-gray-400 truncate">{g.opponent_info?.team || '---'}</span>
                                                                                 </div>
                                                                             </div>
