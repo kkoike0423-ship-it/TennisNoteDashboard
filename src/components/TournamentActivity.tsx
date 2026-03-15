@@ -326,7 +326,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                         </td>
                                         <td className="px-6 py-6 text-center">
                                             <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black ${expandedTournament === t.tournament_id ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                                                {t.games.length} Matches
+                                                {t.games.length}
                                             </span>
                                         </td>
                                         <td className="px-6 py-6 last:rounded-r-2xl text-right">
