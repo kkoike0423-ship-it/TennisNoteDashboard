@@ -238,7 +238,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
           </div>
           <button
             onClick={() => setIsAddingTournament(true)}
-            className="flex items-center gap-2 px-6 py-3.5 bg-green-600 text-white rounded-2xl text-sm font-black hover:bg-tennis-green-700 transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-3.5 bg-tennis-green-600 text-white rounded-2xl text-sm font-black hover:bg-tennis-green-700 transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isProcessing}
           >
             {isProcessing ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Plus size={18} />}
@@ -268,7 +268,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                 <input disabled={isProcessing} type="text" className="w-full px-5 py-3 rounded-2xl border-2 border-tennis-green-100 outline-none disabled:opacity-50" value={newTournament.location} onChange={e => setNewTournament({...newTournament, location: e.target.value})} />
               </div>
             </div>
-            <button disabled={isProcessing} onClick={handleAddTournament} className="mt-8 w-full py-4 bg-green-600 text-white rounded-2xl font-black hover:bg-tennis-green-700 shadow-xl disabled:opacity-50 flex justify-center items-center gap-2">
+            <button disabled={isProcessing} onClick={handleAddTournament} className="mt-8 w-full py-4 bg-tennis-green-600 text-white rounded-2xl font-black hover:bg-tennis-green-700 shadow-xl disabled:opacity-50 flex justify-center items-center gap-2">
                 {isProcessing && <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
                 保存する
             </button>
@@ -350,7 +350,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                         <button 
                                                             disabled={isProcessing}
                                                             onClick={() => handleAddGame(t.tournament_id)} 
-                                                            className="px-6 py-2.5 bg-green-600 text-white rounded-xl text-xs font-black hover:bg-tennis-green-700 transition-all flex items-center gap-2 shadow-lg active:scale-95 disabled:opacity-50"
+                                                            className="px-6 py-2.5 bg-tennis-green-600 text-white rounded-xl text-xs font-black hover:bg-tennis-green-700 transition-all flex items-center gap-2 shadow-lg active:scale-95 disabled:opacity-50"
                                                         >
                                                             <Plus size={16} /> 試合を追加
                                                         </button>
@@ -370,7 +370,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                                         
                                                                         <div className="flex-1 min-w-0">
                                                                             <div className="flex flex-wrap items-center gap-3 mb-3">
-                                                                                <div className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm ${g.result === 'Win' ? 'bg-green-600 text-white' : 'bg-rose-500 text-white'}`}>
+                                                                                <div className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm ${g.result === 'Win' ? 'bg-tennis-green-600 text-white' : 'bg-rose-500 text-white'}`}>
                                                                                     {g.result === 'Win' ? 'Winner' : 'Loser'}
                                                                                 </div>
                                                                                 <p className="text-base font-black text-gray-900 tracking-tight">vs {g.opponent_info?.full_name || g.opponent1_id || '---'}</p>
@@ -432,7 +432,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
 
                                                     {editingGame?.tournamentId === t.tournament_id && (
                                                         <div className="mt-12 p-10 bg-gray-900 rounded-[3rem] text-white shadow-3xl animate-in zoom-in-95 duration-300 relative overflow-hidden">
-                                                            <div className="absolute top-0 right-0 w-64 h-64 bg-green-600/10 blur-[100px] rounded-full"></div>
+                                                            <div className="absolute top-0 right-0 w-64 h-64 bg-tennis-green-600/10 blur-[100px] rounded-full"></div>
                                                             <div className="flex items-center justify-between mb-10 relative z-10">
                                                                 <h6 className="font-black text-2xl tracking-tighter">Enter Match Result / 試合結果の記録</h6>
                                                                 <button disabled={isProcessing} onClick={() => setEditingGame(null)} className="w-12 h-12 flex items-center justify-center bg-white/10 rounded-full hover:bg-white/20 transition-all active:scale-90 disabled:opacity-30"><X size={24} /></button>
