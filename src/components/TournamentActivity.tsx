@@ -296,8 +296,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                         <thead>
                             <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                 <th className="px-6 py-4 text-left w-24">日付</th>
-                                <th className="px-6 py-4 text-left">大会名 / イベント</th>
-                                <th className="px-6 py-4 text-left">会場</th>
+                                <th className="px-6 py-4 text-left">大会名 / 開催地</th>
                                 <th className="px-6 py-4 text-center w-24">試合数</th>
                                 <th className="px-6 py-4 text-right w-20">操作</th>
                             </tr>
@@ -316,9 +315,14 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                 return parts.length >= 3 ? `${parts[2]}日` : '--';
                                             })()}
                                         </td>
-                                        <td className="px-6 py-6 text-sm font-black tracking-tight">{t.name}</td>
-                                        <td className={`px-6 py-6 text-xs font-bold ${expandedTournament === t.tournament_id ? 'text-gray-400' : 'text-gray-500'}`}>
-                                            <div className="flex items-center gap-2"><MapPin size={12} /> {t.location || '---'}</div>
+                                        <td className="px-6 py-6 text-sm font-black tracking-tight leading-snug">
+                                            <div className="flex flex-col gap-1.5">
+                                                <span className="break-words">{t.name}</span>
+                                                <div className={`flex items-center gap-1.5 text-[11px] font-bold ${expandedTournament === t.tournament_id ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                    <MapPin size={12} className="shrink-0" />
+                                                    <span className="truncate">{t.location || '---'}</span>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-6 text-center">
                                             <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black ${expandedTournament === t.tournament_id ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-500'}`}>
@@ -341,7 +345,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                     
                                     {expandedTournament === t.tournament_id && (
                                         <tr>
-                                            <td colSpan={5} className="p-0">
+                                            <td colSpan={4} className="p-0">
                                                 <div className="bg-gray-50 border-x-4 border-b-4 border-gray-900 rounded-b-[2rem] p-8 animate-in slide-in-from-top-2 duration-300 shadow-2xl mb-8">
                                                     <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-200">
                                                         <h5 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em] flex items-center gap-2">
