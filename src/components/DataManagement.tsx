@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Database, Users, Calendar, AlertCircle, Loader2, Table, UserPlus } from 'lucide-react';
+import { Search, Database, Users, Calendar, AlertCircle, Loader2, Table } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import type { Player, CategoryRanking } from '../types/database';
 
@@ -345,7 +345,6 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                                                         : 'bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white'
                                                     }`}
                                                 >
-                                                    <UserPlus size={14} />
                                                     {watchedIds.has(item.player.player_id) ? '解除' : 'ライバル'}
                                                 </button>
                                             </div>
