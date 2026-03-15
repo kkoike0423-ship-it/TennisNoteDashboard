@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Database, Users, Calendar, AlertCircle, Loader2, Table, Star, UserPlus } from 'lucide-react';
+import { Search, Database, Users, Calendar, AlertCircle, Loader2, Table, Star } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import type { Player, CategoryRanking } from '../types/database';
 
@@ -201,7 +201,7 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                 <div>
                     <h1 className="text-3xl font-black font-display text-tennis-green-900 flex items-center tracking-tight">
                         <Database className="mr-3 h-8 w-8 text-tennis-green-600" />
-                        選手名鑑・ランキング表
+                        ランキング
                     </h1>
                     <p className="text-tennis-green-600 font-bold mt-1">
                         全国の選手データと最新ランキングをカテゴリー別に閲覧できます。
@@ -304,11 +304,10 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                             <thead className="sticky top-0 bg-white/90 backdrop-blur-md z-10 border-b border-gray-100">
                                 <tr>
                                     <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center min-w-[50px]">順位</th>
-                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest min-w-[140px]">選手名 / ID</th>
-                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest min-w-[120px]">所属チーム</th>
+                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest min-w-[140px]">選手名 / 所属</th>
                                     <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right min-w-[80px]">ポイント</th>
-                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center min-w-[100px]">基本カテゴリ</th>
-                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center min-w-[150px]">クイック登録</th>
+                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center min-w-[100px]">カテゴリー</th>
+                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center min-w-[80px]">登録</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -319,12 +318,14 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                                                 {item.ranking?.rank}
                                             </span>
                                         </td>
-                                        <td className="px-3 py-5">
-                                            <p className="font-bold text-gray-800 text-base sm:text-lg whitespace-nowrap overflow-hidden text-ellipsis">{item.player.full_name}</p>
-                                            <p className="text-[9px] sm:text-[10px] text-gray-400 font-mono mt-0.5">{item.player.player_id}</p>
-                                        </td>
-                                        <td className="px-3 py-5">
-                                            <span className="text-gray-600 font-medium text-sm sm:text-base line-clamp-2">{item.player.team || '-'}</span>
+                                        <td className="px-3 py-5 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] bg-gray-100 text-gray-500 font-bold px-1.5 py-0.5 rounded shrink-0">
+                                                    {item.player.category}
+                                                </span>
+                                                <p className="font-bold text-gray-800 text-base sm:text-lg truncate">{item.player.full_name}</p>
+                                            </div>
+                                            <p className="text-[10px] text-gray-400 font-bold mt-0.5 truncate">{item.player.team || '所属なし'}</p>
                                         </td>
                                         <td className="px-3 py-5 text-right">
                                             <div className="flex items-center justify-end whitespace-nowrap">
@@ -343,25 +344,18 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                                             </span>
                                         </td>
                                         <td className="px-3 py-5">
-                                            <div className="flex items-center justify-center gap-2">
+                                            <div className="flex items-center justify-center">
                                                 <button
                                                     onClick={() => handleAction(item.player, 'opponent')}
                                                     disabled={actionLoading?.startsWith(item.player.player_id)}
-                                                    className={`px-2 py-1.5 rounded-lg transition-all flex items-center gap-1 text-[10px] font-black whitespace-nowrap ${
+                                                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-[11px] font-black shadow-sm ${
                                                         watchedIds.has(item.player.player_id)
-                                                        ? 'bg-amber-500 text-white shadow-md'
-                                                        : 'bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white shadow-sm'
+                                                        ? 'bg-amber-500 text-white'
+                                                        : 'bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white'
                                                     }`}
                                                 >
-                                                    <Star size={12} fill={watchedIds.has(item.player.player_id) ? "white" : "none"} />
+                                                    <Star size={14} fill={watchedIds.has(item.player.player_id) ? "white" : "none"} />
                                                     {watchedIds.has(item.player.player_id) ? '解除' : 'ライバル'}
-                                                </button>
-                                                <button
-                                                    onClick={() => handleAction(item.player, 'managed')}
-                                                    disabled={actionLoading?.startsWith(item.player.player_id)}
-                                                    className="p-1.5 bg-tennis-green-50 text-tennis-green-600 rounded-lg hover:bg-tennis-green-600 hover:text-white transition-all shadow-sm"
-                                                >
-                                                    <UserPlus size={12} />
                                                 </button>
                                             </div>
                                         </td>

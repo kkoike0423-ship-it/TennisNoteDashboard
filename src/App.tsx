@@ -194,7 +194,7 @@ function App() {
             className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'data' ? 'bg-tennis-green-50 text-tennis-green-700' : 'text-gray-600 hover:bg-tennis-green-50'}`}
           >
             <Database className="w-5 h-5 mr-3" />
-            選手検索・順位表
+            ランキング
           </button>
 
           <button
@@ -280,7 +280,7 @@ function App() {
               {activeMenu === 'overview' ? 'My Dash' :
                 activeMenu === 'scout' ? 'Scouting' :
                   activeMenu === 'draw' ? 'Draw Analysis' :
-                    activeMenu === 'data' ? 'Player Directory' : 'Settings'}
+                    activeMenu === 'data' ? 'Ranking' : 'Settings'}
             </h1>
           </div>
           
