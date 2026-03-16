@@ -277,15 +277,47 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="col-span-1 md:col-span-2">
                     <label className="block text-[10px] font-black text-tennis-green-600 uppercase tracking-widest mb-2">大会名</label>
-                    <input disabled={isProcessing} type="text" className="w-full px-5 py-3 rounded-2xl border-2 border-tennis-green-100 outline-none transition-all disabled:opacity-50 bg-gray-50" placeholder="例：東京都ジュニア選手権" value={newTournament.name} onChange={e => setNewTournament({...newTournament, name: e.target.value})} />
+                    <input disabled={isProcessing} type="text" className="w-full px-5 py-3 rounded-2xl border-2 border-tennis-green-100 outline-none transition-all disabled:opacity-50 bg-gray-50 font-bold" placeholder="例：東京都ジュニア選手権" value={newTournament.name} onChange={e => setNewTournament({...newTournament, name: e.target.value})} />
                 </div>
               <div>
                 <label className="block text-[10px] font-black text-tennis-green-600 uppercase tracking-widest mb-2">開催日</label>
-                <input disabled={isProcessing} type="date" className="w-full px-5 py-3 rounded-2xl border-2 border-tennis-green-100 outline-none disabled:opacity-50 bg-gray-50" value={newTournament.date} onChange={e => setNewTournament({...newTournament, date: e.target.value})} />
+                <input disabled={isProcessing} type="date" className="w-full px-5 py-3 rounded-2xl border-2 border-tennis-green-100 outline-none disabled:opacity-50 bg-gray-50 font-bold text-sm" value={newTournament.date} onChange={e => setNewTournament({...newTournament, date: e.target.value})} />
               </div>
               <div>
                 <label className="block text-[10px] font-black text-tennis-green-600 uppercase tracking-widest mb-2">会場 / 場所</label>
-                <input disabled={isProcessing} type="text" className="w-full px-5 py-3 rounded-2xl border-2 border-tennis-green-100 outline-none disabled:opacity-50 bg-gray-50" value={newTournament.location} onChange={e => setNewTournament({...newTournament, location: e.target.value})} />
+                <input disabled={isProcessing} type="text" className="w-full px-5 py-3 rounded-2xl border-2 border-tennis-green-100 outline-none disabled:opacity-50 bg-gray-50 font-bold text-sm" placeholder="会場名を入力..." value={newTournament.location} onChange={e => setNewTournament({...newTournament, location: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-tennis-green-600 uppercase tracking-widest mb-2">カテゴリー</label>
+                <select 
+                    disabled={isProcessing} 
+                    className="w-full px-5 py-3 rounded-2xl border-2 border-tennis-green-100 outline-none disabled:opacity-50 bg-gray-50 font-bold text-sm"
+                    value={newTournament.category}
+                    onChange={e => setNewTournament({...newTournament, category: e.target.value})}
+                >
+                    <option value="">カテゴリーを選択...</option>
+                    {['U9', 'U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U18', 'Open'].map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-tennis-green-600 uppercase tracking-widest mb-2">種目</label>
+                <div className="flex gap-2">
+                    {[
+                        { label: 'シングルス', value: 'Single' },
+                        { label: 'ダブルス', value: 'Double' }
+                    ].map(type => (
+                        <button
+                            key={type.value}
+                            disabled={isProcessing}
+                            onClick={() => setNewTournament({...newTournament, match_type: type.value})}
+                            className={`flex-1 py-3 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all ${newTournament.match_type === type.value ? 'bg-tennis-green-500 text-white shadow-lg scale-105 z-10' : 'bg-white border-2 border-tennis-green-100 text-tennis-green-400 hover:bg-tennis-green-50'}`}
+                        >
+                            {type.label}
+                        </button>
+                    ))}
+                </div>
               </div>
             </div>
             <button disabled={isProcessing} onClick={handleAddTournament} className="mt-8 w-full py-4 bg-emerald-600 text-white rounded-2xl font-black hover:bg-emerald-700 shadow-xl disabled:opacity-50 flex justify-center items-center gap-2">
