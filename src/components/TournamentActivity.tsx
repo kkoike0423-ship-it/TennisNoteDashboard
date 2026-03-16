@@ -368,7 +368,14 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                         </td>
                                         <td className="px-1 py-3 sm:py-6 sm:px-6 text-sm font-black tracking-tight leading-snug">
                                             <div className="flex flex-col gap-1.5">
-                                                <span className="break-words">{t.name}</span>
+                                                <div className="flex items-center gap-2">
+                                                    {t.match_type && (
+                                                        <span className={`w-5 h-5 flex items-center justify-center rounded text-[10px] font-black shrink-0 ${t.match_type === 'Double' ? 'bg-orange-500 text-white shadow-sm' : 'bg-blue-500 text-white shadow-sm'}`}>
+                                                            {t.match_type === 'Double' ? 'W' : 'S'}
+                                                        </span>
+                                                    )}
+                                                    <span className="break-words">{t.name}</span>
+                                                </div>
                                                 <div className={`flex items-center gap-1.5 text-[0.75rem] font-bold ${expandedTournament === t.tournament_id ? 'text-gray-400' : 'text-gray-500'}`}>
                                                     <MapPin size={12} className="shrink-0" />
                                                     <span className="truncate">{t.location || '---'}</span>
