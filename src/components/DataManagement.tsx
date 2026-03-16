@@ -49,7 +49,9 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                 .not('gender', 'is', null);
 
             if (data) {
-                const uniqueGenders = Array.from(new Set(data.map(g => g.gender.trim()))).sort();
+                const uniqueGenders = Array.from(new Set(data.map(g => g.gender.trim())))
+                    .filter(g => g !== "")
+                    .sort();
                 setAvailableGenders(uniqueGenders);
             }
         };
