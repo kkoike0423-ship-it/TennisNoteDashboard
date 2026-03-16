@@ -49,15 +49,17 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                 .not('gender', 'is', null);
 
             if (data) {
-                const uniqueGenders = Array.from(new Set(data.map(g => g.gender.trim())))
-                    .filter(g => g !== "")
+                const uniqueGenders = Array.from(new Set(
+                    data.map(g => (g.gender || '').trim())
+                ))
+                    .filter(g => g && g.length > 0) // Explicitly remove empty strings
                     .sort();
                 setAvailableGenders(uniqueGenders);
             }
         };
 
-        if (initialGender) {
-            setSelectedGender(initialGender);
+        if (initialGender && initialGender.trim()) {
+            setSelectedGender(initialGender.trim());
         }
 
         const fetchUserPreferences = async () => {
