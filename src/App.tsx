@@ -276,11 +276,11 @@ function App() {
             >
               <Menu size={24} />
             </button>
-            <h1 className="text-lg sm:text-xl font-black text-gray-800 tracking-tight truncate max-w-[120px] sm:max-w-none whitespace-nowrap">
+            <h1 className="text-base sm:text-lg font-bold text-gray-800 tracking-tight truncate max-w-[120px] sm:max-w-none whitespace-nowrap">
               {activeMenu === 'overview' ? 'ダッシュボード' :
-                activeMenu === 'scout' ? 'Opponents' :
-                  activeMenu === 'draw' ? 'Draw Analysis' :
-                    activeMenu === 'data' ? 'Ranking' : 'Settings'}
+                activeMenu === 'scout' ? '対戦相手' :
+                  activeMenu === 'draw' ? 'ドロー分析' :
+                    activeMenu === 'data' ? 'ランキング' : '設定'}
             </h1>
           </div>
           
@@ -314,7 +314,7 @@ function App() {
           </div>
         </header>
 
-        <div className={`flex-1 overflow-auto p-4 lg:p-10 pb-24 lg:pb-10 relative ${
+        <div className={`flex-1 overflow-auto p-4 lg:p-8 pb-24 lg:pb-8 relative ${
           fontSizeLevel === 1 ? 'text-xs' :
             fontSizeLevel === 2 ? 'text-sm' :
               fontSizeLevel === 4 ? 'text-lg' :
@@ -322,14 +322,14 @@ function App() {
         }`}>
           <div className="max-w-4xl mx-auto z-10 relative">
             {activeMenu === 'overview' && (
-              <div className="space-y-8 animate-in fade-in duration-500">
-                <div className="flex items-center justify-between bg-tennis-green-900 text-white p-6 rounded-[2rem] shadow-xl overflow-hidden relative">
+              <div className="space-y-6 animate-in fade-in duration-500">
+                <div className="flex items-center justify-between bg-tennis-green-900 text-white p-4 sm:p-5 rounded-3xl shadow-xl overflow-hidden relative">
                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
                    <div className="relative z-10">
                       <p className="text-tennis-green-300 text-[10px] font-black uppercase tracking-widest mb-1">Monitoring Player</p>
                       <div className="flex items-center gap-3 group relative">
                         <select
-                          className="bg-transparent text-2xl font-black outline-none appearance-none cursor-pointer pr-8"
+                          className="bg-transparent text-xl font-bold outline-none appearance-none cursor-pointer pr-8"
                           value={activeManagedPlayerId || ''}
                           onChange={(e) => setActiveManagedPlayerId(e.target.value)}
                         >

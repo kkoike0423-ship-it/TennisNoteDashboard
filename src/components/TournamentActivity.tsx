@@ -241,7 +241,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
             <Trophy size={20} className="sm:w-7 sm:h-7" />
           </div>
           <div>
-            <h3 className="text-base sm:text-xl font-black text-gray-900 tracking-tight">大会記録・戦績表</h3>
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">大会記録・戦績表</h3>
           </div>
         </div>
         <div className="flex items-center gap-3">

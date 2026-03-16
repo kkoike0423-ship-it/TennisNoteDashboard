@@ -203,8 +203,8 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
         <div className="space-y-6 container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-tennis-green-100 pb-6">
                 <div>
-                    <h1 className="text-3xl font-black font-display text-tennis-green-900 flex items-center tracking-tight">
-                        <Database className="mr-3 h-8 w-8 text-tennis-green-600" />
+                    <h1 className="text-2xl font-bold font-display text-tennis-green-900 flex items-center tracking-tight">
+                        <Database className="mr-3 h-6 w-6 text-tennis-green-600" />
                         ランキング
                     </h1>
                     <p className="text-tennis-green-600 font-bold mt-1">

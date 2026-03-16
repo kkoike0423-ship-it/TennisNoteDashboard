@@ -40,13 +40,13 @@
 /* Base resets & styles matching old tailwind configuration */
 @layer base {
   html {
-    /* 
-      18px (標準より一回り大きく) 
-      5vw (スマホでのスケーリングを感度良く)
-      22px (大きくなりすぎないよう調整)
-      ※標準の16pxから最大1.37倍(22px)まで拡大し、ボタンや各パネルのremサイズも連動させます。
-    */
-    font-size: clamp(18px, 5vw, 22px);
+    /* Standard base size for better PC/Tablet readability */
+    font-size: 16px;
+    
+    /* Subtle scaling for mobile, but keeping it anchored near 16px */
+    @media (max-width: 768px) {
+      font-size: clamp(15px, 4vw, 17px);
+    }
   }
 
   body {
