@@ -356,7 +356,7 @@ export default function MultiPlayerChart({
             <div className={`w-full ${playerType === 'managed' ? 'h-[300px] md:h-[400px]' : 'h-[500px] md:h-[700px]'}`}>
                 {chartDataCategory.length > 0 && (
                     <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={chartDataCategory} margin={{ top: 20, right: 140, left: 10, bottom: 5 }}>
+                        <ComposedChart data={chartDataCategory} margin={{ top: 20, right: 80, left: 10, bottom: 5 }}>
                             <defs>
                                 {playerLines.map((playerId, idx) => (
                                     <linearGradient key={`grad-${playerId}`} id={`color-${playerId}`} x1="0" y1="0" x2="0" y2="1">
@@ -494,25 +494,25 @@ export default function MultiPlayerChart({
                                                 return (
                                                     <g>
                                                         <rect 
-                                                            x={x + 10} 
-                                                            y={y - 12} 
-                                                            width={90} 
-                                                            height={24} 
-                                                            rx={12} 
+                                                            x={x + 8} 
+                                                            y={y - 10} 
+                                                            width={75} 
+                                                            height={20} 
+                                                            rx={10} 
                                                             fill="white" 
-                                                            className="shadow-sm" 
-                                                            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.05))' }}
+                                                            fillOpacity={0.9}
+                                                            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
                                                         />
                                                         <text
-                                                            x={x + 20}
+                                                            x={x + 15}
                                                             y={y + 4}
                                                             fill={baseColor}
-                                                            fontSize={11}
+                                                            fontSize={10}
                                                             fontWeight="900"
                                                         >
                                                             {surname}
-                                                            <tspan dx={6} fill="#94a3b8" fontSize={9} fontWeight="bold">
-                                                                {Number(value)}位
+                                                            <tspan dx={4} fill="#64748b" fontSize={8} fontWeight="bold">
+                                                                {Number(value)}
                                                             </tspan>
                                                         </text>
                                                     </g>
