@@ -489,7 +489,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                                         <button disabled={isProcessing} onClick={() => handleEditGame(t.tournament_id, g)} className="p-2 text-gray-300 hover:text-tennis-green-600 hover:bg-gray-100 rounded-xl transition-all disabled:opacity-30">
                                                                             <Edit2 size={16} />
                                                                         </button>
-                                                                        <button disabled={isProcessing} onClick={() => handleDeleteGame(g.game_id)} className="p-2 text-gray-300 hover:text-rose-500 hover:bg-gray-100 rounded-xl transition-all disabled:opacity-30 opacity-0 group-hover/item:opacity-100">
+                                                                        <button disabled={isProcessing} onClick={() => handleDeleteGame(g.game_id)} className="p-2 text-gray-300 hover:text-rose-500 hover:bg-gray-100 rounded-xl transition-all disabled:opacity-30 sm:opacity-0 sm:group-hover/item:opacity-100">
                                                                             <Trash2 size={16} />
                                                                         </button>
                                                                     </div>
@@ -517,7 +517,18 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                             <div className="absolute top-0 right-0 w-64 h-64 bg-tennis-green-600/10 blur-[100px] rounded-full"></div>
                                                             <div className="flex items-center justify-between mb-6 relative z-10">
                                                                 <h6 className="font-bold text-lg sm:text-2xl tracking-tighter">Enter Match Result / 試合結果の記録</h6>
-                                                                <button disabled={isProcessing} onClick={() => setEditingGame(null)} className="w-10 h-10 flex items-center justify-center bg-white/10 rounded-full hover:bg-white/20 transition-all active:scale-90 disabled:opacity-30"><X size={20} /></button>
+                                                                <div className="flex items-center gap-2">
+                                                                    {editingGame.game.game_id && (
+                                                                        <button 
+                                                                            disabled={isProcessing} 
+                                                                            onClick={() => { handleDeleteGame(editingGame.game.game_id!); setEditingGame(null); }} 
+                                                                            className="w-10 h-10 flex items-center justify-center bg-rose-500/20 text-rose-500 rounded-full hover:bg-rose-500 hover:text-white transition-all active:scale-90 disabled:opacity-30"
+                                                                        >
+                                                                            <Trash2 size={18} />
+                                                                        </button>
+                                                                    )}
+                                                                    <button disabled={isProcessing} onClick={() => setEditingGame(null)} className="w-10 h-10 flex items-center justify-center bg-white/10 rounded-full hover:bg-white/20 transition-all active:scale-90 disabled:opacity-30"><X size={20} /></button>
+                                                                </div>
                                                             </div>
                                                             
                                                             <div className="space-y-6 relative z-10">
