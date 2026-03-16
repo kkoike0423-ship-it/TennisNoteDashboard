@@ -278,29 +278,34 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
             
             <div className="space-y-6 relative z-10">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="col-span-1 md:col-span-2">
-                        <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-3">大会名 / Tournament Name</label>
-                        <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none text-base font-bold transition-all disabled:opacity-50" placeholder="例：東京都ジュニア選手権" value={newTournament.name} onChange={e => setNewTournament({...newTournament, name: e.target.value})} />
+                <div className="col-span-1 md:col-span-2">
+                    <div className="flex items-center gap-3 mb-3">
+                        <span className={`w-6 h-6 flex items-center justify-center rounded-lg text-[10px] font-black shrink-0 transition-all ${newTournament.match_type === 'Double' ? 'bg-orange-500 text-white shadow-lg' : 'bg-blue-500 text-white shadow-lg'}`}>
+                            {newTournament.match_type === 'Double' ? 'W' : 'S'}
+                        </span>
+                        <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest">大会名 / Tournament Name</label>
                     </div>
+                    <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none text-base font-bold text-white transition-all disabled:opacity-50 placeholder:text-white/20" placeholder="例：東京都ジュニア選手権" value={newTournament.name} onChange={e => setNewTournament({...newTournament, name: e.target.value})} />
+                </div>
                   <div>
                     <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-3">開催日 / Date</label>
-                    <input disabled={isProcessing} type="date" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none disabled:opacity-50 font-bold text-sm" value={newTournament.date} onChange={e => setNewTournament({...newTournament, date: e.target.value})} />
+                    <input disabled={isProcessing} type="date" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none disabled:opacity-50 font-bold text-sm text-white" value={newTournament.date} onChange={e => setNewTournament({...newTournament, date: e.target.value})} />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-3">会場 / Location</label>
-                    <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none disabled:opacity-50 font-bold text-sm" placeholder="会場名を入力..." value={newTournament.location} onChange={e => setNewTournament({...newTournament, location: e.target.value})} />
+                    <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none disabled:opacity-50 font-bold text-sm text-white placeholder:text-white/20" placeholder="会場名を入力..." value={newTournament.location} onChange={e => setNewTournament({...newTournament, location: e.target.value})} />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-3">カテゴリー / Category</label>
                     <select 
                         disabled={isProcessing} 
-                        className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none disabled:opacity-50 font-bold text-sm"
+                        className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none disabled:opacity-50 font-bold text-sm text-white"
                         value={newTournament.category}
                         onChange={e => setNewTournament({...newTournament, category: e.target.value})}
                     >
-                        <option value="" className="bg-gray-900">カテゴリーを選択...</option>
+                        <option value="" className="bg-gray-900 text-white">カテゴリーを選択...</option>
                         {['U9', 'U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U18', 'Open'].map(cat => (
-                            <option key={cat} value={cat} className="bg-gray-900">{cat}</option>
+                            <option key={cat} value={cat} className="bg-gray-900 text-white">{cat}</option>
                         ))}
                     </select>
                   </div>
@@ -377,12 +382,16 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                         <td className="px-1 py-3 sm:py-6 sm:px-6 text-sm font-black tracking-tight leading-snug">
                                             <div className="flex flex-col gap-1.5">
                                                 <div className="flex items-center gap-2">
-                                                    {t.match_type && (
-                                                        <span className={`w-5 h-5 flex items-center justify-center rounded text-[10px] font-black shrink-0 ${t.match_type === 'Double' ? 'bg-orange-500 text-white shadow-sm' : 'bg-blue-500 text-white shadow-sm'}`}>
-                                                            {t.match_type === 'Double' ? 'W' : 'S'}
-                                                        </span>
-                                                    )}
-                                                    <span className="break-words">{t.name}</span>
+                                                    {(() => {
+                                                        const typeRaw = (t.match_type || t.format || 'Single').toLowerCase();
+                                                        const isDouble = typeRaw.includes('double');
+                                                        return (
+                                                            <span className={`w-5 h-5 flex items-center justify-center rounded text-[10px] font-black shrink-0 ${isDouble ? 'bg-orange-500 text-white shadow-sm' : 'bg-blue-500 text-white shadow-sm'}`}>
+                                                                {isDouble ? 'W' : 'S'}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                    <span className="break-words">{t.name || t.tournament_name || '名称未設定'}</span>
                                                 </div>
                                                 <div className={`flex items-center gap-1.5 text-[0.75rem] font-bold ${expandedTournament === t.tournament_id ? 'text-gray-400' : 'text-gray-500'}`}>
                                                     <MapPin size={12} className="shrink-0" />
