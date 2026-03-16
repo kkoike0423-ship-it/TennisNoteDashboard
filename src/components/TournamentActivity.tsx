@@ -209,14 +209,19 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
   };
 
   const handleDeleteGame = async (gId: string) => {
-    if (isProcessing) return;
-    if (!window.confirm('この試合データを削除してもよいですか？')) return;
+    if (isProcessing) return false;
+    if (!window.confirm('この試合データを削除してもよいですか？')) return false;
     
     setIsProcessing(true);
     try {
         const { error } = await supabase.from('games').delete().eq('game_id', gId);
-        if (error) alert('Error: ' + error.message);
-        else fetchData();
+        if (error) {
+            alert('Error: ' + error.message);
+            return false;
+        } else {
+            fetchData();
+            return true;
+        }
     } finally {
         setIsProcessing(false);
     }
@@ -409,9 +414,9 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                     <button 
                                                         disabled={isProcessing}
                                                         onClick={(e) => { e.stopPropagation(); handleDeleteTournament(t.tournament_id); }} 
-                                                        className={`p-1.5 rounded-lg transition-all ${expandedTournament === t.tournament_id ? 'text-rose-400 hover:bg-white/10' : 'opacity-0 group-hover:opacity-100 text-rose-500 hover:bg-rose-50'}`}
+                                                        className={`p-2 rounded-xl transition-all ${expandedTournament === t.tournament_id ? 'bg-rose-500 text-white shadow-lg' : 'opacity-0 group-hover:opacity-100 text-rose-500 bg-rose-50 hover:bg-rose-100'}`}
                                                     >
-                                                        <Trash2 size={14} />
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 </div>
                                             </div>
@@ -485,11 +490,11 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                                     </div>
                                                                     
                                                                     {/* Buttons - More compact */}
-                                                                    <div className="flex flex-col gap-1 shrink-0">
-                                                                        <button disabled={isProcessing} onClick={() => handleEditGame(t.tournament_id, g)} className="p-2 text-gray-300 hover:text-tennis-green-600 hover:bg-gray-100 rounded-xl transition-all disabled:opacity-30">
+                                                                    <div className="flex flex-col gap-2 shrink-0">
+                                                                        <button disabled={isProcessing} onClick={() => handleEditGame(t.tournament_id, g)} className="p-2 text-tennis-green-600 bg-tennis-green-50 hover:bg-tennis-green-100 rounded-xl transition-all disabled:opacity-30">
                                                                             <Edit2 size={16} />
                                                                         </button>
-                                                                        <button disabled={isProcessing} onClick={() => handleDeleteGame(g.game_id)} className="p-2 text-gray-300 hover:text-rose-500 hover:bg-gray-100 rounded-xl transition-all disabled:opacity-30 sm:opacity-0 sm:group-hover/item:opacity-100">
+                                                                        <button disabled={isProcessing} onClick={() => handleDeleteGame(g.game_id)} className="p-2 text-rose-500 bg-rose-50 hover:bg-rose-100 rounded-xl transition-all disabled:opacity-30">
                                                                             <Trash2 size={16} />
                                                                         </button>
                                                                     </div>
@@ -518,16 +523,19 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                             <div className="flex items-center justify-between mb-6 relative z-10">
                                                                 <h6 className="font-bold text-lg sm:text-2xl tracking-tighter">Enter Match Result / 試合結果の記録</h6>
                                                                 <div className="flex items-center gap-2">
-                                                                    {editingGame.game.game_id && (
+                                                                    {editingGame.game.game_id && !editingGame.game.game_id.startsWith('G-') && (
                                                                         <button 
                                                                             disabled={isProcessing} 
-                                                                            onClick={() => { handleDeleteGame(editingGame.game.game_id!); setEditingGame(null); }} 
-                                                                            className="w-10 h-10 flex items-center justify-center bg-rose-500/20 text-rose-500 rounded-full hover:bg-rose-500 hover:text-white transition-all active:scale-90 disabled:opacity-30"
+                                                                            onClick={async () => { 
+                                                                                const success = await handleDeleteGame(editingGame.game.game_id!); 
+                                                                                if (success) setEditingGame(null); 
+                                                                            }} 
+                                                                            className="w-10 h-10 flex items-center justify-center bg-rose-500 text-white rounded-full hover:bg-rose-600 transition-all active:scale-90 shadow-lg disabled:opacity-30"
                                                                         >
-                                                                            <Trash2 size={18} />
+                                                                            <Trash2 size={20} />
                                                                         </button>
                                                                     )}
-                                                                    <button disabled={isProcessing} onClick={() => setEditingGame(null)} className="w-10 h-10 flex items-center justify-center bg-white/10 rounded-full hover:bg-white/20 transition-all active:scale-90 disabled:opacity-30"><X size={20} /></button>
+                                                                    <button disabled={isProcessing} onClick={() => setEditingGame(null)} className="w-10 h-10 flex items-center justify-center bg-white/10 text-white rounded-full hover:bg-white/20 transition-all active:scale-90 disabled:opacity-30 shadow-lg"><X size={20} /></button>
                                                                 </div>
                                                             </div>
                                                             
