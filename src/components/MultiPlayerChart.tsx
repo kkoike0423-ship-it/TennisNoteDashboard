@@ -272,7 +272,7 @@ export default function MultiPlayerChart({
     }
 
     return (
-        <div className="glass-panel p-6 shadow-sm mt-6">
+        <div className="glass-panel p-3 sm:p-6 shadow-sm mt-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <div>
                     <h3 className="text-lg font-black text-gray-900 flex items-center tracking-tight">
@@ -356,7 +356,7 @@ export default function MultiPlayerChart({
             <div className={`w-full ${playerType === 'managed' ? 'h-[300px] md:h-[400px]' : 'h-[500px] md:h-[700px]'}`}>
                 {chartDataCategory.length > 0 && (
                     <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={chartDataCategory} margin={{ top: 20, right: 80, left: 10, bottom: 5 }}>
+                        <ComposedChart data={chartDataCategory} margin={{ top: 20, right: 45, left: 10, bottom: 5 }}>
                             <defs>
                                 {playerLines.map((playerId, idx) => (
                                     <linearGradient key={`grad-${playerId}`} id={`color-${playerId}`} x1="0" y1="0" x2="0" y2="1">
@@ -494,24 +494,24 @@ export default function MultiPlayerChart({
                                                 return (
                                                     <g>
                                                         <rect 
-                                                            x={x + 8} 
-                                                            y={y - 10} 
-                                                            width={75} 
-                                                            height={20} 
-                                                            rx={10} 
+                                                            x={x + 4} 
+                                                            y={y - 9} 
+                                                            width={55} 
+                                                            height={18} 
+                                                            rx={9} 
                                                             fill="white" 
                                                             fillOpacity={0.9}
                                                             style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
                                                         />
                                                         <text
-                                                            x={x + 15}
-                                                            y={y + 4}
+                                                            x={x + 10}
+                                                            y={y + 3}
                                                             fill={baseColor}
-                                                            fontSize={10}
+                                                            fontSize={9}
                                                             fontWeight="900"
                                                         >
                                                             {surname}
-                                                            <tspan dx={4} fill="#64748b" fontSize={8} fontWeight="bold">
+                                                            <tspan dx={2} fill="#64748b" fontSize={7} fontWeight="bold">
                                                                 {Number(value)}
                                                             </tspan>
                                                         </text>
