@@ -49,7 +49,7 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                 .not('gender', 'is', null);
 
             if (data) {
-                const uniqueGenders = Array.from(new Set(data.map(g => g.gender))).sort();
+                const uniqueGenders = Array.from(new Set(data.map(g => g.gender.trim()))).sort();
                 setAvailableGenders(uniqueGenders);
             }
         };
@@ -220,12 +220,12 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                     <label className="text-sm font-bold text-gray-600 flex items-center gap-2">
                         <Users size={16} /> 性別
                     </label>
-                    <div className="flex flex-col bg-gray-100 rounded-xl overflow-hidden">
+                    <div className="flex flex-col bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
                         <button
                             onClick={() => setSelectedGender('all')}
-                            className={`flex-1 py-2 px-3 text-sm font-bold transition-all ${selectedGender === 'all'
-                                    ? 'bg-white text-tennis-green-600 shadow-sm rounded-xl'
-                                    : 'text-gray-400 hover:text-gray-600 outline-none'
+                            className={`flex-1 py-3 px-3 text-sm font-bold transition-all border-b border-gray-200 last:border-none ${selectedGender === 'all'
+                                    ? 'bg-white text-tennis-green-600'
+                                    : 'text-gray-400 hover:text-gray-600 bg-transparent'
                                 }`}
                         >
                             すべて
@@ -234,9 +234,9 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                             <button
                                 key={g}
                                 onClick={() => setSelectedGender(g)}
-                                className={`flex-1 py-2 px-3 text-sm font-bold transition-all ${selectedGender === g
-                                        ? 'bg-white text-tennis-green-600 shadow-sm rounded-xl'
-                                        : 'text-gray-400 hover:text-gray-600 outline-none'
+                                className={`flex-1 py-3 px-3 text-sm font-bold transition-all border-b border-gray-200 last:border-none ${selectedGender === g
+                                        ? 'bg-white text-tennis-green-600'
+                                        : 'text-gray-400 hover:text-gray-600 bg-transparent'
                                     }`}
                             >
                                 {g}
