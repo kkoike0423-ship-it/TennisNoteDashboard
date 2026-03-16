@@ -4,8 +4,12 @@ import { Trophy, MapPin, Plus, Trash2, Edit2, ChevronDown, ChevronUp, X, Message
 import type { Tournament, Game, Player } from '../types/database';
 
 interface GameWithOpponent extends Game {
-  opponent_info?: Player | null;
+  opponent_info?: Player | null; // backward compatibility
   opponent_rank?: number | null;
+  opponent1_info?: Player | null;
+  opponent1_rank?: number | null;
+  opponent2_info?: Player | null;
+  opponent2_rank?: number | null;
 }
 
 interface TournamentWithGames extends Tournament {
@@ -35,6 +39,8 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
 
   const [editingGame, setEditingGame] = useState<{tournamentId: string, game: Partial<GameWithOpponent>} | null>(null);
   const [opponentSearch, setOpponentSearch] = useState('');
+  const [opponentSearch2, setOpponentSearch2] = useState('');
+  const [activeSearchIndex, setActiveSearchIndex] = useState<1 | 2>(1);
   const [opponentSuggestions, setOpponentSuggestions] = useState<Player[]>([]);
 
   useEffect(() => {
@@ -63,7 +69,10 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
 
       if (gError) throw gError;
 
-      const opponentIds = Array.from(new Set((gData || []).map(g => g.opponent1_id).filter(Boolean)));
+      const opponent1Ids = (gData || []).map(g => g.opponent1_id).filter(Boolean);
+      const opponent2Ids = (gData || []).map(g => g.opponent2_id).filter(Boolean);
+      const opponentIds = Array.from(new Set([...opponent1Ids, ...opponent2Ids]));
+      
       const { data: pData } = await supabase
         .from('players')
         .select('*')
@@ -82,16 +91,28 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
         return {
           ...t,
           games: (gData || []).filter(g => g.tournament_id === t.tournament_id).map(g => {
-            const opponent = (pData || []).find(p => p.player_id === g.opponent1_id);
-            const ranking = (rData || []).find(r => 
+            const opponent1 = (pData || []).find(p => p.player_id === g.opponent1_id);
+            const opponent2 = (pData || []).find(p => p.player_id === g.opponent2_id);
+            
+            const ranking1 = (rData || []).find(r => 
               r.player_id === g.opponent1_id && 
               r.year_month === tMonth && 
-              r.category === opponent?.category
+              r.category === opponent1?.category
             );
+            const ranking2 = (rData || []).find(r => 
+              r.player_id === g.opponent2_id && 
+              r.year_month === tMonth && 
+              r.category === opponent2?.category
+            );
+            
             return {
               ...g,
-              opponent_info: opponent,
-              opponent_rank: ranking?.rank
+              opponent_info: opponent1, // keep for backward compatibility if needed
+              opponent_rank: ranking1?.rank,
+              opponent1_info: opponent1,
+              opponent1_rank: ranking1?.rank,
+              opponent2_info: opponent2,
+              opponent2_rank: ranking2?.rank
             };
           })
         };
@@ -157,7 +178,8 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
 
   const handleEditGame = (tId: string, game: GameWithOpponent) => {
     setEditingGame({ tournamentId: tId, game: { ...game } });
-    setOpponentSearch(game.opponent_info?.full_name || game.opponent1_id || '');
+    setOpponentSearch(game.opponent1_info?.full_name || game.opponent1_id || '');
+    setOpponentSearch2(game.opponent2_info?.full_name || game.opponent2_id || '');
   };
 
   const handleAddGame = (tId: string) => {
@@ -177,7 +199,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
         game_id: `G-${Date.now()}`,
         tournament_id: tId,
         main_player_id: activeManagedPlayerId || '',
-        opponent1_id: '', score: '', result: 'Win', memo: '',
+        opponent1_id: '', opponent2_id: '', score: '', result: 'Win', memo: '',
         set1_self: 0, set1_opp: 0, set2_self: 0, set2_opp: 0,
         set3_self: 0, set3_opp: 0, set4_self: 0, set4_opp: 0,
         set5_self: 0, set5_opp: 0, tb_self: 0, tb_opp: 0,
@@ -185,13 +207,14 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
       }
     });
     setOpponentSearch('');
+    setOpponentSearch2('');
   };
 
   const handleSaveGame = async () => {
     if (!editingGame || isProcessing) return;
     setIsProcessing(true);
     try {
-        const { opponent_info, ...gameToSave } = editingGame.game;
+        const { opponent_info, opponent_rank, opponent1_info, opponent1_rank, opponent2_info, opponent2_rank, ...gameToSave } = editingGame.game;
         const scores = [];
         for(let i=1; i<=5; i++) {
             const self = (editingGame.game as any)[`set${i}_self`];
@@ -227,8 +250,11 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
     }
   };
 
-  const searchOpponents = async (query: string) => {
-    setOpponentSearch(query);
+  const searchOpponents = async (query: string, index: 1 | 2 = 1) => {
+    setActiveSearchIndex(index);
+    if (index === 1) setOpponentSearch(query);
+    else setOpponentSearch2(query);
+
     if (query.length < 1) { setOpponentSuggestions([]); return; }
     const { data } = await supabase.from('players').select('*')
         .or(`full_name.ilike.%${query}%,last_name.ilike.%${query}%`).limit(8);
@@ -461,21 +487,32 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                                                 </div>
                                                                                 <div className="text-sm sm:text-base font-black text-gray-900 tracking-tight truncate flex items-center gap-1">
                                                                                     <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-400 font-bold shrink-0">
-                                                                                        {g.opponent_info?.category || '---'}
+                                                                                        {g.opponent1_info?.category || g.opponent_info?.category || '---'}
                                                                                     </span>
-                                                                                    <span className="truncate">{g.opponent_info?.full_name || g.opponent1_id || '---'}</span>
-                                                                                    {g.opponent_rank && (
-                                                                                        <span className="text-[11px] text-tennis-green-600 font-black shrink-0 ml-1">
-                                                                                            ({g.opponent_rank}位)
-                                                                                        </span>
-                                                                                    )}
+                                                                                    <span className="truncate">
+                                                                                        {g.opponent1_info?.full_name || g.opponent1_id || '---'}
+                                                                                        {g.opponent1_rank && <span className="text-[11px] text-tennis-green-600 font-black ml-1">({g.opponent1_rank}位)</span>}
+                                                                                        {g.opponent2_id && (
+                                                                                            <>
+                                                                                                <span className="mx-2 font-bold text-gray-300">/</span>
+                                                                                                {g.opponent2_info?.full_name || g.opponent2_id}
+                                                                                                {g.opponent2_rank && <span className="text-[11px] text-tennis-green-600 font-black ml-1">({g.opponent2_rank}位)</span>}
+                                                                                            </>
+                                                                                        )}
+                                                                                    </span>
                                                                                 </div>
                                                                             </div>
                                                                             
                                                                             {/* Team Info Row */}
                                                                             <div className="flex items-center gap-3 mb-3">
                                                                                 <div className="flex items-center gap-1 min-w-0">
-                                                                                    <span className="text-[11px] font-bold text-gray-400 truncate">{g.opponent_info?.team || '---'}</span>
+                                                                                    <span className="text-[11px] font-bold text-gray-400 truncate">{g.opponent1_info?.team || g.opponent_info?.team || '---'}</span>
+                                                                                    {g.opponent2_info?.team && (
+                                                                                        <>
+                                                                                            <span className="text-gray-200 mx-1">/</span>
+                                                                                            <span className="text-[11px] font-bold text-gray-400 truncate">{g.opponent2_info.team}</span>
+                                                                                        </>
+                                                                                    )}
                                                                                 </div>
                                                                             </div>
 
@@ -540,22 +577,44 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                             </div>
                                                             
                                                             <div className="space-y-6 relative z-10">
-                                                                <div>
-                                                                    <label className="block text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-3">Opponent Selection / 対戦相手</label>
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                                     <div className="relative">
-                                                                        <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none pr-12 text-base font-bold transition-all disabled:opacity-50" placeholder="対戦相手の氏名を検索..." value={opponentSearch} onChange={e => searchOpponents(e.target.value)} />
-                                                                        <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-white/20" size={20} />
-                                                                        {opponentSuggestions.length > 0 && !isProcessing && (
-                                                                        <div className="absolute top-full left-0 w-full mt-2 bg-white text-gray-900 rounded-2xl shadow-3xl z-50 overflow-hidden max-h-60 overflow-y-auto border-2 border-gray-900">
-                                                                            {opponentSuggestions.map(p => (
-                                                                            <button key={p.player_id} className="w-full text-left px-5 py-3 hover:bg-tennis-green-50 transition-colors border-b border-gray-100 last:border-0" onClick={() => { setEditingGame({...editingGame, game: {...editingGame.game, opponent1_id: p.player_id}}); setOpponentSuggestions([]); setOpponentSearch(p.full_name); }}>
-                                                                                <div className="flex items-center justify-between font-bold text-sm">{p.full_name} <span className="text-[10px] text-tennis-green-600 bg-tennis-green-100 px-2 py-0.5 rounded-full">{p.ranking_point}pt</span></div>
-                                                                                <div className="text-[10px] text-gray-500 mt-0.5">{p.team} | {p.category}</div>
-                                                                            </button>
-                                                                            ))}
+                                                                        <label className="block text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-3">Opponent 1 {t.match_type === 'Double' ? '/ 対戦相手1' : '/ 対戦相手'}</label>
+                                                                        <div className="relative">
+                                                                            <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none pr-12 text-base font-bold text-white transition-all disabled:opacity-50" placeholder="氏名を入力..." value={opponentSearch} onChange={e => searchOpponents(e.target.value, 1)} />
+                                                                            <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-white/20" size={20} />
                                                                         </div>
+                                                                        {opponentSuggestions.length > 0 && activeSearchIndex === 1 && !isProcessing && (
+                                                                            <div className="absolute top-full left-0 w-full mt-2 bg-white text-gray-900 rounded-2xl shadow-3xl z-50 overflow-hidden max-h-60 overflow-y-auto border-2 border-gray-900">
+                                                                                {opponentSuggestions.map(p => (
+                                                                                    <button key={p.player_id} className="w-full text-left px-5 py-3 hover:bg-tennis-green-50 transition-colors border-b border-gray-100 last:border-0" onClick={() => { setEditingGame({...editingGame, game: {...editingGame.game, opponent1_id: p.player_id}}); setOpponentSuggestions([]); setOpponentSearch(p.full_name); }}>
+                                                                                        <div className="flex items-center justify-between font-bold text-sm">{p.full_name} <span className="text-[10px] text-tennis-green-600 bg-tennis-green-100 px-2 py-0.5 rounded-full">{p.ranking_point}pt</span></div>
+                                                                                        <div className="text-[10px] text-gray-500 mt-0.5">{p.team} | {p.category}</div>
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
                                                                         )}
                                                                     </div>
+
+                                                                    {t.match_type === 'Double' && (
+                                                                        <div className="relative">
+                                                                            <label className="block text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-3">Opponent 2 / 対戦相手2</label>
+                                                                            <div className="relative">
+                                                                                <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none pr-12 text-base font-bold text-white transition-all disabled:opacity-50" placeholder="氏名を入力..." value={opponentSearch2} onChange={e => searchOpponents(e.target.value, 2)} />
+                                                                                <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-white/20" size={20} />
+                                                                            </div>
+                                                                            {opponentSuggestions.length > 0 && activeSearchIndex === 2 && !isProcessing && (
+                                                                                <div className="absolute top-full left-0 w-full mt-2 bg-white text-gray-900 rounded-2xl shadow-3xl z-50 overflow-hidden max-h-60 overflow-y-auto border-2 border-gray-900">
+                                                                                    {opponentSuggestions.map(p => (
+                                                                                        <button key={p.player_id} className="w-full text-left px-5 py-3 hover:bg-tennis-green-50 transition-colors border-b border-gray-100 last:border-0" onClick={() => { setEditingGame({...editingGame, game: {...editingGame.game, opponent2_id: p.player_id}}); setOpponentSuggestions([]); setOpponentSearch2(p.full_name); }}>
+                                                                                            <div className="flex items-center justify-between font-bold text-sm">{p.full_name} <span className="text-[10px] text-tennis-green-600 bg-tennis-green-100 px-2 py-0.5 rounded-full">{p.ranking_point}pt</span></div>
+                                                                                            <div className="text-[10px] text-gray-500 mt-0.5">{p.team} | {p.category}</div>
+                                                                                        </button>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                                 
                                                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
