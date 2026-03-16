@@ -220,7 +220,7 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                     <label className="text-sm font-bold text-gray-600 flex items-center gap-2">
                         <Users size={16} /> 性別
                     </label>
-                    <div className="flex flex-col bg-gray-100 p-1 rounded-xl gap-1">
+                    <div className="flex flex-col bg-gray-100 p-1 rounded-xl">
                         <button
                             onClick={() => setSelectedGender('all')}
                             className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all ${selectedGender === 'all'
