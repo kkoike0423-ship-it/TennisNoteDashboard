@@ -220,12 +220,12 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                     <label className="text-sm font-bold text-gray-600 flex items-center gap-2">
                         <Users size={16} /> 性別
                     </label>
-                    <div className="flex flex-col bg-gray-100 p-1 rounded-xl">
+                    <div className="flex flex-col bg-gray-100 rounded-xl overflow-hidden">
                         <button
                             onClick={() => setSelectedGender('all')}
-                            className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all ${selectedGender === 'all'
-                                    ? 'bg-white text-tennis-green-600 shadow-sm'
-                                    : 'text-gray-400 hover:text-gray-600'
+                            className={`flex-1 py-2 px-3 text-sm font-bold transition-all ${selectedGender === 'all'
+                                    ? 'bg-white text-tennis-green-600 shadow-sm rounded-xl'
+                                    : 'text-gray-400 hover:text-gray-600 outline-none'
                                 }`}
                         >
                             すべて
@@ -234,9 +234,9 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                             <button
                                 key={g}
                                 onClick={() => setSelectedGender(g)}
-                                className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all ${selectedGender === g
-                                        ? 'bg-white text-tennis-green-600 shadow-sm'
-                                        : 'text-gray-400 hover:text-gray-600'
+                                className={`flex-1 py-2 px-3 text-sm font-bold transition-all ${selectedGender === g
+                                        ? 'bg-white text-tennis-green-600 shadow-sm rounded-xl'
+                                        : 'text-gray-400 hover:text-gray-600 outline-none'
                                     }`}
                             >
                                 {g}
