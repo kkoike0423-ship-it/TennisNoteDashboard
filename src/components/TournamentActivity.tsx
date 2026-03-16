@@ -214,7 +214,13 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
     if (!editingGame || isProcessing) return;
     setIsProcessing(true);
     try {
-        const { opponent_info, opponent_rank, opponent1_info, opponent1_rank, opponent2_info, opponent2_rank, ...gameToSave } = editingGame.game;
+        const { 
+            opponent_info, opponent_rank, 
+            opponent1_info, opponent1_rank, 
+            opponent2_info, opponent2_rank, 
+            ...gameToSave 
+        } = editingGame.game;
+        
         const scores = [];
         for(let i=1; i<=5; i++) {
             const self = (editingGame.game as any)[`set${i}_self`];
@@ -223,6 +229,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
         }
         if (editingGame.game.tb_self !== 0 || editingGame.game.tb_opp !== 0) scores.push(`[${editingGame.game.tb_self}-${editingGame.game.tb_opp}]`);
         gameToSave.score = scores.join(', ');
+        
         const { error } = await supabase.from('games').upsert([gameToSave]);
         if (error) alert(error.message);
         else { setEditingGame(null); fetchData(); }
@@ -252,8 +259,23 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
 
   const searchOpponents = async (query: string, index: 1 | 2 = 1) => {
     setActiveSearchIndex(index);
-    if (index === 1) setOpponentSearch(query);
-    else setOpponentSearch2(query);
+    if (index === 1) {
+      setOpponentSearch(query);
+      if (editingGame) {
+        setEditingGame({
+          ...editingGame,
+          game: { ...editingGame.game, opponent1_id: query }
+        });
+      }
+    } else {
+      setOpponentSearch2(query);
+      if (editingGame) {
+        setEditingGame({
+          ...editingGame,
+          game: { ...editingGame.game, opponent2_id: query }
+        });
+      }
+    }
 
     if (query.length < 1) { setOpponentSuggestions([]); return; }
     const { data } = await supabase.from('players').select('*')
@@ -579,42 +601,53 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                             <div className="space-y-6 relative z-10">
                                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                                     <div className="relative">
-                                                                        <label className="block text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-3">Opponent 1 {t.match_type === 'Double' ? '/ 対戦相手1' : '/ 対戦相手'}</label>
-                                                                        <div className="relative">
-                                                                            <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none pr-12 text-base font-bold text-white transition-all disabled:opacity-50" placeholder="氏名を入力..." value={opponentSearch} onChange={e => searchOpponents(e.target.value, 1)} />
-                                                                            <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-white/20" size={20} />
-                                                                        </div>
-                                                                        {opponentSuggestions.length > 0 && activeSearchIndex === 1 && !isProcessing && (
-                                                                            <div className="absolute top-full left-0 w-full mt-2 bg-white text-gray-900 rounded-2xl shadow-3xl z-50 overflow-hidden max-h-60 overflow-y-auto border-2 border-gray-900">
-                                                                                {opponentSuggestions.map(p => (
-                                                                                    <button key={p.player_id} className="w-full text-left px-5 py-3 hover:bg-tennis-green-50 transition-colors border-b border-gray-100 last:border-0" onClick={() => { setEditingGame({...editingGame, game: {...editingGame.game, opponent1_id: p.player_id}}); setOpponentSuggestions([]); setOpponentSearch(p.full_name); }}>
-                                                                                        <div className="flex items-center justify-between font-bold text-sm">{p.full_name} <span className="text-[10px] text-tennis-green-600 bg-tennis-green-100 px-2 py-0.5 rounded-full">{p.ranking_point}pt</span></div>
-                                                                                        <div className="text-[10px] text-gray-500 mt-0.5">{p.team} | {p.category}</div>
-                                                                                    </button>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
+                                                                        {(() => {
+                                                                            const isDouble = (t.match_type || t.format || '').toLowerCase().includes('double');
+                                                                            return (
+                                                                                <>
+                                                                                    <label className="block text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-3">Opponent 1 {isDouble ? '/ 対戦相手1' : '/ 対戦相手'}</label>
+                                                                                    <div className="relative">
+                                                                                        <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none pr-12 text-base font-bold text-white transition-all disabled:opacity-50" placeholder="氏名を入力..." value={opponentSearch} onChange={e => searchOpponents(e.target.value, 1)} />
+                                                                                        <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-white/20" size={20} />
+                                                                                    </div>
+                                                                                    {opponentSuggestions.length > 0 && activeSearchIndex === 1 && !isProcessing && (
+                                                                                        <div className="absolute top-full left-0 w-full mt-2 bg-white text-gray-900 rounded-2xl shadow-3xl z-50 overflow-hidden max-h-60 overflow-y-auto border-2 border-gray-900">
+                                                                                            {opponentSuggestions.map(p => (
+                                                                                                <button key={p.player_id} className="w-full text-left px-5 py-3 hover:bg-tennis-green-50 transition-colors border-b border-gray-100 last:border-0" onClick={() => { setEditingGame({...editingGame!, game: {...editingGame!.game, opponent1_id: p.player_id}}); setOpponentSuggestions([]); setOpponentSearch(p.full_name); }}>
+                                                                                                    <div className="flex items-center justify-between font-bold text-sm">{p.full_name} <span className="text-[10px] text-tennis-green-600 bg-tennis-green-100 px-2 py-0.5 rounded-full">{p.ranking_point}pt</span></div>
+                                                                                                    <div className="text-[10px] text-gray-500 mt-0.5">{p.team} | {p.category}</div>
+                                                                                                </button>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </>
+                                                                            );
+                                                                        })()}
                                                                     </div>
 
-                                                                    {t.match_type === 'Double' && (
-                                                                        <div className="relative">
-                                                                            <label className="block text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-3">Opponent 2 / 対戦相手2</label>
+                                                                    {(() => {
+                                                                        const isDouble = (t.match_type || t.format || '').toLowerCase().includes('double');
+                                                                        if (!isDouble) return null;
+                                                                        return (
                                                                             <div className="relative">
-                                                                                <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none pr-12 text-base font-bold text-white transition-all disabled:opacity-50" placeholder="氏名を入力..." value={opponentSearch2} onChange={e => searchOpponents(e.target.value, 2)} />
-                                                                                <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-white/20" size={20} />
-                                                                            </div>
-                                                                            {opponentSuggestions.length > 0 && activeSearchIndex === 2 && !isProcessing && (
-                                                                                <div className="absolute top-full left-0 w-full mt-2 bg-white text-gray-900 rounded-2xl shadow-3xl z-50 overflow-hidden max-h-60 overflow-y-auto border-2 border-gray-900">
-                                                                                    {opponentSuggestions.map(p => (
-                                                                                        <button key={p.player_id} className="w-full text-left px-5 py-3 hover:bg-tennis-green-50 transition-colors border-b border-gray-100 last:border-0" onClick={() => { setEditingGame({...editingGame, game: {...editingGame.game, opponent2_id: p.player_id}}); setOpponentSuggestions([]); setOpponentSearch2(p.full_name); }}>
-                                                                                            <div className="flex items-center justify-between font-bold text-sm">{p.full_name} <span className="text-[10px] text-tennis-green-600 bg-tennis-green-100 px-2 py-0.5 rounded-full">{p.ranking_point}pt</span></div>
-                                                                                            <div className="text-[10px] text-gray-500 mt-0.5">{p.team} | {p.category}</div>
-                                                                                        </button>
-                                                                                    ))}
+                                                                                <label className="block text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-3">Opponent 2 / 対戦相手2</label>
+                                                                                <div className="relative">
+                                                                                    <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none pr-12 text-base font-bold text-white transition-all disabled:opacity-50" placeholder="氏名を入力..." value={opponentSearch2} onChange={e => searchOpponents(e.target.value, 2)} />
+                                                                                    <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-white/20" size={20} />
                                                                                 </div>
-                                                                            )}
-                                                                        </div>
-                                                                    )}
+                                                                                {opponentSuggestions.length > 0 && activeSearchIndex === 2 && !isProcessing && (
+                                                                                    <div className="absolute top-full left-0 w-full mt-2 bg-white text-gray-900 rounded-2xl shadow-3xl z-50 overflow-hidden max-h-60 overflow-y-auto border-2 border-gray-900">
+                                                                                        {opponentSuggestions.map(p => (
+                                                                                            <button key={p.player_id} className="w-full text-left px-5 py-3 hover:bg-tennis-green-50 transition-colors border-b border-gray-100 last:border-0" onClick={() => { setEditingGame({...editingGame!, game: {...editingGame!.game, opponent2_id: p.player_id}}); setOpponentSuggestions([]); setOpponentSearch2(p.full_name); }}>
+                                                                                                <div className="flex items-center justify-between font-bold text-sm">{p.full_name} <span className="text-[10px] text-tennis-green-600 bg-tennis-green-100 px-2 py-0.5 rounded-full">{p.ranking_point}pt</span></div>
+                                                                                                <div className="text-[10px] text-gray-500 mt-0.5">{p.team} | {p.category}</div>
+                                                                                            </button>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })()}
                                                                 </div>
                                                                 
                                                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
