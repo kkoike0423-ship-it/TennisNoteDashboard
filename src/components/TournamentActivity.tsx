@@ -457,80 +457,80 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                     </div>
 
                                                     {editingGame?.tournamentId === t.tournament_id && (
-                                                        <div className="mt-12 p-10 bg-gray-900 rounded-[3rem] text-white shadow-3xl animate-in zoom-in-95 duration-300 relative overflow-hidden">
+                                                        <div className="mt-8 p-5 sm:p-10 bg-gray-900 rounded-3xl text-white shadow-3xl animate-in zoom-in-95 duration-300 relative overflow-hidden">
                                                             <div className="absolute top-0 right-0 w-64 h-64 bg-tennis-green-600/10 blur-[100px] rounded-full"></div>
-                                                            <div className="flex items-center justify-between mb-10 relative z-10">
-                                                                <h6 className="font-black text-2xl tracking-tighter">Enter Match Result / 試合結果の記録</h6>
-                                                                <button disabled={isProcessing} onClick={() => setEditingGame(null)} className="w-12 h-12 flex items-center justify-center bg-white/10 rounded-full hover:bg-white/20 transition-all active:scale-90 disabled:opacity-30"><X size={24} /></button>
+                                                            <div className="flex items-center justify-between mb-6 relative z-10">
+                                                                <h6 className="font-bold text-lg sm:text-2xl tracking-tighter">Enter Match Result / 試合結果の記録</h6>
+                                                                <button disabled={isProcessing} onClick={() => setEditingGame(null)} className="w-10 h-10 flex items-center justify-center bg-white/10 rounded-full hover:bg-white/20 transition-all active:scale-90 disabled:opacity-30"><X size={20} /></button>
                                                             </div>
                                                             
-                                                            <div className="space-y-10 relative z-10">
+                                                            <div className="space-y-6 relative z-10">
                                                                 <div>
-                                                                    <label className="block text-xs font-black text-white/30 uppercase tracking-[0.3em] mb-4">Opponent Selection / 対戦相手</label>
+                                                                    <label className="block text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-3">Opponent Selection / 対戦相手</label>
                                                                     <div className="relative">
-                                                                        <input disabled={isProcessing} type="text" className="w-full px-8 py-5 bg-white/10 border-2 border-white/10 rounded-2xl focus:border-tennis-green-400 outline-none pr-14 text-lg font-bold transition-all disabled:opacity-50" placeholder="対戦相手の氏名を検索..." value={opponentSearch} onChange={e => searchOpponents(e.target.value)} />
-                                                                        <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-white/20" size={24} />
+                                                                        <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none pr-12 text-base font-bold transition-all disabled:opacity-50" placeholder="対戦相手の氏名を検索..." value={opponentSearch} onChange={e => searchOpponents(e.target.value)} />
+                                                                        <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-white/20" size={20} />
                                                                         {opponentSuggestions.length > 0 && !isProcessing && (
-                                                                        <div className="absolute top-full left-0 w-full mt-4 bg-white text-gray-900 rounded-[2rem] shadow-3xl z-50 overflow-hidden max-h-80 overflow-y-auto border-4 border-gray-900">
+                                                                        <div className="absolute top-full left-0 w-full mt-2 bg-white text-gray-900 rounded-2xl shadow-3xl z-50 overflow-hidden max-h-60 overflow-y-auto border-2 border-gray-900">
                                                                             {opponentSuggestions.map(p => (
-                                                                            <button key={p.player_id} className="w-full text-left px-8 py-5 hover:bg-tennis-green-50 transition-colors border-b border-gray-100 last:border-0" onClick={() => { setEditingGame({...editingGame, game: {...editingGame.game, opponent1_id: p.player_id}}); setOpponentSuggestions([]); setOpponentSearch(p.full_name); }}>
-                                                                                <div className="flex items-center justify-between font-black text-base">{p.full_name} <span className="text-xs text-tennis-green-600 bg-tennis-green-100 px-3 py-1 rounded-full">{p.ranking_point}pt</span></div>
-                                                                                <div className="text-xs text-gray-500 mt-1">{p.team} | {p.category}</div>
+                                                                            <button key={p.player_id} className="w-full text-left px-5 py-3 hover:bg-tennis-green-50 transition-colors border-b border-gray-100 last:border-0" onClick={() => { setEditingGame({...editingGame, game: {...editingGame.game, opponent1_id: p.player_id}}); setOpponentSuggestions([]); setOpponentSearch(p.full_name); }}>
+                                                                                <div className="flex items-center justify-between font-bold text-sm">{p.full_name} <span className="text-[10px] text-tennis-green-600 bg-tennis-green-100 px-2 py-0.5 rounded-full">{p.ranking_point}pt</span></div>
+                                                                                <div className="text-[10px] text-gray-500 mt-0.5">{p.team} | {p.category}</div>
                                                                             </button>
                                                                             ))}
                                                                         </div>
                                                                         )}
                                                                     </div>
                                                                 </div>
-
-                                                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                                                                
+                                                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                                                                     {[1, 2, 3, 4, 5].map(setNum => (
-                                                                        <div key={setNum} className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                                                                            <p className="text-[10px] font-black text-center mb-4 text-white/20 uppercase tracking-widest">Set {setNum}</p>
-                                                                            <div className="flex gap-2">
-                                                                                <input disabled={isProcessing} type="number" className="w-full bg-white text-gray-900 text-center py-3 rounded-xl font-black text-base disabled:opacity-50" value={(editingGame.game[`set${setNum}_self` as keyof Game] as number) || 0} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, [`set${setNum}_self`]: parseInt(e.target.value) || 0}})} />
-                                                                                <input disabled={isProcessing} type="number" className="w-full bg-white text-gray-900 text-center py-3 rounded-xl font-black text-base disabled:opacity-50" value={(editingGame.game[`set${setNum}_opp` as keyof Game] as number) || 0} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, [`set${setNum}_opp`]: parseInt(e.target.value) || 0}})} />
+                                                                        <div key={setNum} className="bg-white/5 p-3 rounded-xl border border-white/10">
+                                                                            <p className="text-[9px] font-black text-center mb-2 text-white/20 uppercase tracking-widest">Set {setNum}</p>
+                                                                            <div className="flex gap-1.5">
+                                                                                <input disabled={isProcessing} type="number" className="w-full bg-white text-gray-900 text-center py-2 rounded-lg font-black text-sm disabled:opacity-50" value={(editingGame.game[`set${setNum}_self` as keyof Game] as number) || 0} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, [`set${setNum}_self`]: parseInt(e.target.value) || 0}})} />
+                                                                                <input disabled={isProcessing} type="number" className="w-full bg-white text-gray-900 text-center py-2 rounded-lg font-black text-sm disabled:opacity-50" value={(editingGame.game[`set${setNum}_opp` as keyof Game] as number) || 0} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, [`set${setNum}_opp`]: parseInt(e.target.value) || 0}})} />
                                                                             </div>
                                                                         </div>
                                                                     ))}
-                                                                    <div className="bg-tennis-green-500/20 p-4 rounded-2xl border border-tennis-green-500/40">
-                                                                        <p className="text-[10px] font-black text-center mb-4 text-tennis-green-400 uppercase tracking-widest">TieBreak</p>
-                                                                        <div className="flex gap-2">
-                                                                            <input disabled={isProcessing} type="number" className="w-full bg-white text-gray-900 text-center py-3 rounded-xl font-black text-base border-2 border-tennis-green-500/20 disabled:opacity-50" value={editingGame.game.tb_self || 0} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, tb_self: parseInt(e.target.value) || 0}})} />
-                                                                            <input disabled={isProcessing} type="number" className="w-full bg-white text-gray-900 text-center py-3 rounded-xl font-black text-base border-2 border-tennis-green-500/20 disabled:opacity-50" value={editingGame.game.tb_opp || 0} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, tb_opp: parseInt(e.target.value) || 0}})} />
+                                                                    <div className="bg-tennis-green-500/20 p-3 rounded-xl border border-tennis-green-500/40">
+                                                                        <p className="text-[9px] font-black text-center mb-2 text-tennis-green-400 uppercase tracking-widest">TieBreak</p>
+                                                                        <div className="flex gap-1.5">
+                                                                            <input disabled={isProcessing} type="number" className="w-full bg-white text-gray-900 text-center py-2 rounded-lg font-black text-sm border border-tennis-green-500/20 disabled:opacity-50" value={editingGame.game.tb_self || 0} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, tb_self: parseInt(e.target.value) || 0}})} />
+                                                                            <input disabled={isProcessing} type="number" className="w-full bg-white text-gray-900 text-center py-2 rounded-lg font-black text-sm border border-tennis-green-500/20 disabled:opacity-50" value={editingGame.game.tb_opp || 0} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, tb_opp: parseInt(e.target.value) || 0}})} />
                                                                         </div>
                                                                     </div>
                                                                 </div>
-
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                                                
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                                     <div>
-                                                                        <label className="block text-xs font-black text-white/30 uppercase tracking-[0.3em] mb-6">Outcome / 勝敗結果</label>
-                                                                        <div className="flex gap-3">
+                                                                        <label className="block text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-4">Outcome / 勝敗結果</label>
+                                                                        <div className="flex gap-2">
                                                                             {['Win', 'Loss', 'Bye'].map(r => (
-                                                                            <button disabled={isProcessing} key={r} onClick={() => setEditingGame({...editingGame, game: {...editingGame.game, result: r}})} className={`flex-1 py-5 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all disabled:opacity-50 ${editingGame.game.result === r ? 'bg-tennis-green-500 text-white shadow-2xl scale-105 z-10' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
+                                                                            <button disabled={isProcessing} key={r} onClick={() => setEditingGame({...editingGame, game: {...editingGame.game, result: r}})} className={`flex-1 py-4 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all disabled:opacity-50 ${editingGame.game.result === r ? 'bg-tennis-green-500 text-white shadow-xl scale-105 z-10' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
                                                                                 {r === 'Loss' ? 'Loser' : r === 'Win' ? 'Winner' : 'Bye'}
                                                                             </button>
                                                                             ))}
                                                                         </div>
                                                                     </div>
                                                                     <div>
-                                                                        <label className="block text-xs font-black text-white/30 uppercase tracking-[0.3em] mb-5">Custom Score / スコア修正</label>
-                                                                        <input disabled={isProcessing} type="text" className="w-full px-8 py-5 bg-white/10 border-2 border-white/10 rounded-2xl focus:border-tennis-green-400 outline-none text-base font-bold disabled:opacity-50" value={editingGame.game.score || ''} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, score: e.target.value}})} />
+                                                                        <label className="block text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-4">Custom Score / スコア修正</label>
+                                                                        <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none text-sm font-bold disabled:opacity-50" value={editingGame.game.score || ''} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, score: e.target.value}})} />
                                                                     </div>
                                                                 </div>
-
+                                                                
                                                                 <div>
-                                                                    <label className="block text-xs font-black text-white/30 uppercase tracking-[0.3em] mb-5">Post-Match Memo / 分析・感想</label>
-                                                                    <textarea disabled={isProcessing} className="w-full px-8 py-6 bg-white/10 border-2 border-white/10 rounded-[2rem] focus:border-tennis-green-400 outline-none h-48 resize-none text-base font-medium leading-relaxed disabled:opacity-50" placeholder="この試合の振り返りや、次の課題などを入力してください..." value={editingGame.game.memo || ''} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, memo: e.target.value}})}></textarea>
+                                                                    <label className="block text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-4">Post-Match Memo / 分析・感想</label>
+                                                                    <textarea disabled={isProcessing} className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-2xl focus:border-tennis-green-400 outline-none h-32 resize-none text-sm font-medium leading-relaxed disabled:opacity-50" placeholder="この試合の振り返りや、次の課題などを入力してください..." value={editingGame.game.memo || ''} onChange={e => setEditingGame({...editingGame, game: {...editingGame.game, memo: e.target.value}})}></textarea>
                                                                 </div>
                                                             </div>
-
-                                                            <div className="flex gap-6 mt-12">
-                                                                <button disabled={isProcessing} onClick={handleSaveGame} className="flex-1 py-6 bg-tennis-green-500 text-white rounded-[2rem] text-sm font-black hover:bg-tennis-green-400 shadow-3xl transform hover:-translate-y-1 transition-all active:scale-95 flex justify-center items-center gap-2">
-                                                                    {isProcessing && <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
-                                                                    記録を保存する
+                                                            
+                                                            <div className="flex gap-4 mt-8">
+                                                                <button disabled={isProcessing} onClick={handleSaveGame} className="flex-[2] py-4 bg-tennis-green-500 text-white rounded-xl text-xs font-black hover:bg-tennis-green-400 shadow-xl transition-all active:scale-95 flex justify-center items-center gap-2">
+                                                                    {isProcessing && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
+                                                                    記録を保存
                                                                 </button>
-                                                                <button disabled={isProcessing} onClick={() => setEditingGame(null)} className="px-12 py-6 bg-white/10 text-white rounded-[2rem] text-sm font-bold hover:bg-white/20 transition-all disabled:opacity-50">キャンセル</button>
+                                                                <button disabled={isProcessing} onClick={() => setEditingGame(null)} className="flex-1 py-4 bg-white/10 text-white rounded-xl text-xs font-bold hover:bg-white/20 transition-all disabled:opacity-50">キャンセル</button>
                                                             </div>
                                                         </div>
                                                     )}
