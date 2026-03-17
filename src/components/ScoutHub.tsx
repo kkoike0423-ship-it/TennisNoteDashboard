@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Search, Star, Loader2, Trash2 } from "lucide-react";
 import { supabase } from "../utils/supabaseClient";
 import MultiPlayerChart from "./MultiPlayerChart";
@@ -145,12 +145,7 @@ export default function ScoutHub() {
         });
     };
 
-    const chartComparisonIds = useMemo(() => {
-        const visibleRivalIds = rivals
-            .filter(r => !hiddenRivalIds.has(r.player_id))
-            .map(r => r.player_id);
-        return visibleRivalIds;
-    }, [rivals, hiddenRivalIds]);
+
 
     if (!activeManagedPlayerId) {
         return (
@@ -171,10 +166,10 @@ export default function ScoutHub() {
                     <div className="w-10 h-10 bg-tennis-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-tennis-green-100">
                         <Search className="text-white" size={20} />
                     </div>
-                    <h2 className="text-xl font-black text-gray-900 tracking-tight">対戦相手スカウト</h2>
+                    <h2 className="text-xl font-black text-gray-900 tracking-tight">対戦相手</h2>
                 </div>
                 <p className="text-sm text-gray-500 font-medium">
-                    <span className="font-black text-tennis-green-600">{activeManagedPlayer?.full_name || "選手"}</span> さんのライバルを登録・分析します。
+                    <span className="font-black text-tennis-green-600">{activeManagedPlayer?.full_name || "選手"}</span> さんの対戦相手を登録・分析します。
                 </p>
             </header>
 
@@ -219,7 +214,7 @@ export default function ScoutHub() {
 
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">ライバルリスト</h3>
+                        <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">対戦相手リスト</h3>
                         <span className="text-xs font-bold bg-tennis-green-100 text-tennis-green-700 px-3 py-1 rounded-full">{rivals.length} Players</span>
                     </div>
 
@@ -228,7 +223,7 @@ export default function ScoutHub() {
                             <div className="col-span-full py-10 flex justify-center"><Loader2 className="animate-spin text-tennis-green-600" size={32} /></div>
                         ) : rivals.length === 0 ? (
                             <div className="col-span-full py-16 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-                                <p className="text-gray-400 font-bold">まだライバルが登録されていません。</p>
+                                <p className="text-gray-400 font-bold">まだ対戦相手が登録されていません。</p>
                             </div>
                         ) : (
                             rivals.map(rival => {
@@ -274,15 +269,14 @@ export default function ScoutHub() {
                     <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">ランキング比較</h3>
                     <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl border border-gray-50">
                         <MultiPlayerChart
-                            playerType="managed"
+                            playerType="opponent"
                             title=""
                             activeManagedPlayerId={activeManagedPlayerId}
-                            forceSelectedPlayerIds={chartComparisonIds}
                             showControls={false}
                         />
                     </div>
                     <p className="text-[10px] text-center font-bold text-gray-400 uppercase tracking-widest">
-                        ※ ライバル名の星アイコンをクリックしてチャートの表示/非表示を切り替えられます。
+                        ※ 対戦相手名の星アイコンをクリックしてチャートの表示/非表示を切り替えられます。
                     </p>
                 </div>
             </div>
