@@ -145,7 +145,12 @@ export default function ScoutHub() {
         });
     };
 
-
+    // Sync hiddenRivalIds to MultiPlayerChart via custom event
+    useEffect(() => {
+        window.dispatchEvent(new CustomEvent('player-visibility-changed', {
+            detail: { playerType: 'opponent', hiddenIds: Array.from(hiddenRivalIds) }
+        }));
+    }, [hiddenRivalIds]);
 
     if (!activeManagedPlayerId) {
         return (
@@ -229,11 +234,31 @@ export default function ScoutHub() {
                             rivals.map(rival => {
                                 const isHidden = hiddenRivalIds.has(rival.player_id);
                                 return (
-                                    <Card key={rival.player_id} className={`p-4 transition-all ${isHidden ? "opacity-50 grayscale" : "shadow-lg bg-white"}`}>
+                                    <Card
+                                        key={rival.player_id}
+                                        className={`${isHidden ? "opacity-50 grayscale" : "shadow-lg bg-white"}`}
+                                    >
+                                        <div
+                                            className="p-4 transition-all cursor-pointer"
+                                            onClick={() => toggleRivalVisibility(rival.player_id)}
+                                            role="button"
+                                            tabIndex={0}
+                                            onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
+                                                if (e.key === "Enter" || e.key === " ") {
+                                                    e.preventDefault();
+                                                    toggleRivalVisibility(rival.player_id);
+                                                }
+                                            }}
+                                            aria-pressed={!isHidden}
+                                            aria-label={`${rival.full_name} のグラフ表示を${isHidden ? "表示" : "非表示"}にする`}
+                                        >
                                         <div className="flex items-center justify-between mb-4">
                                             <div className="flex items-center gap-3">
                                                 <button 
-                                                    onClick={() => toggleRivalVisibility(rival.player_id)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        toggleRivalVisibility(rival.player_id);
+                                                    }}
                                                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isHidden ? "bg-gray-100 text-gray-300" : "bg-tennis-green-100 text-tennis-green-600"}`}
                                                 >
                                                     <Star size={20} fill={isHidden ? "transparent" : "currentColor"} />
@@ -251,12 +276,16 @@ export default function ScoutHub() {
                                         <div className="flex items-center justify-between pt-3 border-t border-gray-50">
                                             <span className="text-[10px] font-bold text-gray-500 truncate max-w-[150px]">{rival.team}</span>
                                             <button 
-                                                onClick={() => handleDeleteRival(rival.player_id)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteRival(rival.player_id);
+                                                }}
                                                 disabled={actionLoading === rival.player_id}
                                                 className="p-2 text-gray-300 hover:text-rose-500 transition-colors"
                                             >
                                                 <Trash2 size={16} />
                                             </button>
+                                        </div>
                                         </div>
                                     </Card>
                                 );

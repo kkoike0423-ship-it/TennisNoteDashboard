@@ -7,7 +7,7 @@ import PlayerSearch from './components/PlayerSearch';
 import MultiPlayerChart from './components/MultiPlayerChart';
 import DataManagement from './components/DataManagement';
 import ScoutHub from './components/ScoutHub';
-import { Trash2, BarChart3, Search, Database, Menu } from 'lucide-react';
+import { BarChart3, Search, Database, Menu } from 'lucide-react';
 import { TournamentActivity } from './components/TournamentActivity';
 import { useManagedPlayers } from './contexts/ManagedPlayerContext';
 import { Card } from './components/ui';
@@ -24,9 +24,8 @@ function App() {
   const {
     managedPlayers,
     activeManagedPlayerId,
-    activeManagedPlayer, 
+    activeManagedPlayer,
     setActiveManagedPlayerId, 
-    deleteManagedPlayer,
   } = useManagedPlayers();
 
   useEffect(() => {
@@ -43,17 +42,6 @@ function App() {
 
     return () => subscription.unsubscribe();
   }, []);
-
-
-
-  const handleDeleteManagedPlayer = async () => {
-    if (!activeManagedPlayerId) return;
-    const name = activeManagedPlayer?.full_name || activeManagedPlayerId;
-    if (window.confirm(`「${name}」を管理リストから削除しますか？紐づく対戦相手の情報もすべて削除されます。`)) {
-      await deleteManagedPlayer(activeManagedPlayerId);
-    }
-  };
-
   const changeFontSize = (delta: number) => {
     setFontSizeLevel(prev => Math.min(5, Math.max(1, prev + delta)));
   };
@@ -122,12 +110,6 @@ function App() {
                         </select>
                       </div>
                    </div>
-                   <button 
-                    onClick={handleDeleteManagedPlayer}
-                    className="ml-4 w-14 h-14 bg-rose-500 text-white rounded-2xl flex items-center justify-center hover:bg-rose-600 transition-all shadow-lg active:scale-95"
-                   >
-                      <Trash2 size={24} />
-                   </button>
                 </Card>
 
                 <div className="grid grid-cols-1 gap-8">
