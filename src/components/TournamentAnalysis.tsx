@@ -145,13 +145,13 @@ export default function TournamentAnalysis() {
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         if (!ctx) return;
 
-        addLog('画像の前処理（高度な二値化）を開始...');
+        addLog('画像の前処理（適応型二値化）を開始...');
         const width = canvas.width;
         const height = canvas.height;
         const imageData = ctx.getImageData(0, 0, width, height);
         const data = imageData.data;
 
-        // Step 1: Create a grayscale buffer
+        // Step 1: Grayscale
         const grays = new Uint8Array(width * height);
         for (let i = 0; i < data.length; i += 4) {
             grays[i / 4] = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
@@ -159,9 +159,9 @@ export default function TournamentAnalysis() {
 
         /**
          * Simple Block-based Adaptive Thresholding
-         * Divide image into blocks and compute local average brightness.
+         * Increase block size for larger text and soften bias.
          */
-        const blockSize = 32;
+        const blockSize = 64; 
         const blocksW = Math.ceil(width / blockSize);
         const blocksH = Math.ceil(height / blockSize);
         const blockMeans = new Float32Array(blocksW * blocksH);
@@ -189,8 +189,8 @@ export default function TournamentAnalysis() {
                 const idx = (y * width + x) * 4;
                 
                 // If pixel is significantly darker than local average, it's text (0), otherwise background (255)
-                // Using a small bias (-15) to be more aggressive with black text on white
-                const value = grays[y * width + x] < (mean - 15) ? 0 : 255;
+                // soften bias to -10 to preserve thinner lines
+                const value = grays[y * width + x] < (mean - 10) ? 0 : 255;
                 
                 data[idx] = value;
                 data[idx + 1] = value;
@@ -253,8 +253,8 @@ export default function TournamentAnalysis() {
                     addLog(`第 ${i} ページのレンダリング中...`);
                     setProcessingStep(`ページ ${i}/${pagesToProcess} を読み取り中...`);
                     const page = await pdf.getPage(i);
-                    // Increase scale to 3.0 for better OCR detail
-                    const viewport = page.getViewport({ scale: 3.0 });
+                    // 2.5x is usually optimal for balanced speed/accuracy
+                    const viewport = page.getViewport({ scale: 2.5 });
 
                     const canvas = document.createElement('canvas');
                     const context = canvas.getContext('2d');
@@ -300,11 +300,11 @@ export default function TournamentAnalysis() {
                 img.onerror = () => reject(new Error('画像の読み込みに失敗しました。'));
             });
 
-            // Increase resolution for better OCR (3x scale)
-            const scale = 3.0;
+            // 2.5x scale
+            const scale = 2.5;
             const width = (img.naturalWidth || img.width) * scale;
             const height = (img.naturalHeight || img.height) * scale;
-            addLog(`解析用サイズ (3倍スケール): ${Math.round(width)}x${Math.round(height)}`);
+            addLog(`解析用サイズ (2.5倍スケール): ${Math.round(width)}x${Math.round(height)}`);
 
             const canvas = document.createElement('canvas');
             canvas.width = width;
@@ -334,8 +334,8 @@ export default function TournamentAnalysis() {
     };
 
     const initWorker = async () => {
-        addLog('OCRエンジン (日・英混合) を起動中...');
-        const worker = await createWorker(['jpn', 'eng'], 1, {
+        addLog('OCRエンジン (jpn+eng) を起動中...');
+        const worker = await createWorker('jpn+eng', 1, {
             logger: (m: Tesseract.LoggerMessage) => {
                 if (m.status === 'recognizing text') {
                     const progress = Math.round(m.progress * 100);
@@ -368,7 +368,12 @@ export default function TournamentAnalysis() {
             const lines = ocrData.lines ?? [];
             const text = ocrData.text ?? "";
 
-            addLog(`解析完了: 合計 ${text.length} 文字、${lines.length} 行を検出。`);
+            addLog(`解析完了: 合計 ${text.length} 文字検出。`);
+            if (text.trim().length > 0) {
+                // Log first bit of text for raw debugging
+                const previewText = text.length > 50 ? text.substring(0, 50) + "..." : text;
+                addLog(`[生テキスト] ${previewText.replace(/\n/g, ' ')}`);
+            }
 
             let activeLines = lines;
             if (activeLines.length === 0 && text.trim().length > 0) {
@@ -455,7 +460,7 @@ export default function TournamentAnalysis() {
             const foundPlayers = await fuzzySearch(term);
             for (const p of foundPlayers) {
                 const score = calculateMatchRate(term, p.full_name);
-                if (score >= 60) {
+                if (score >= 50) { // Slightly more relaxed for initial candidate check
                     candidates.push({ player: p, cleanedName: term, score });
                 }
             }
