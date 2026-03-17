@@ -455,11 +455,11 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                         </span>
                         <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest">大会名 / Tournament Name</label>
                     </div>
-                    <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none text-base font-bold text-white transition-all disabled:opacity-50 placeholder:text-white/20" value={editingTournament.name || editingTournament.tournament_name || ''} onChange={e => setEditingTournament({...editingTournament, name: e.target.value})} />
+                    <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none text-base font-bold text-white transition-all disabled:opacity-50 placeholder:text-white/20" value={editingTournament.name || ''} onChange={e => setEditingTournament({...editingTournament, name: e.target.value})} />
                 </div>
                   <div>
                     <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-3">開催日 / Date</label>
-                    <input disabled={isProcessing} type="date" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none disabled:opacity-50 font-bold text-sm text-white" value={editingTournament.date || editingTournament.tournament_date || ''} onChange={e => setEditingTournament({...editingTournament, date: e.target.value})} />
+                    <input disabled={isProcessing} type="date" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none disabled:opacity-50 font-bold text-sm text-white" value={editingTournament.date || ''} onChange={e => setEditingTournament({...editingTournament, date: e.target.value})} />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-3">会場 / Location</label>
@@ -579,7 +579,16 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                     {expandedTournament === t.tournament_id ? <ChevronUp size={16} /> : <ChevronDown size={16} className={expandedTournament === t.tournament_id ? 'text-white/30' : 'text-gray-300'} />}
                                                     <button 
                                                         disabled={isProcessing}
-                                                        onClick={(e) => { e.stopPropagation(); setEditingTournament({ ...t }); }} 
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            const normalized = {
+                                                                ...t,
+                                                                name: t.name || t.tournament_name || '',
+                                                                date: t.date || t.tournament_date || '',
+                                                                match_type: (t.match_type || t.format || 'Single').toLowerCase().includes('double') ? 'Double' : 'Single'
+                                                            };
+                                                            setEditingTournament(normalized); 
+                                                        }} 
                                                         className={`p-2 rounded-xl transition-all ${expandedTournament === t.tournament_id ? 'bg-tennis-green-500 text-white shadow-lg' : 'opacity-0 group-hover:opacity-100 text-tennis-green-600 bg-tennis-green-50 hover:bg-tennis-green-100'}`}
                                                     >
                                                         <Edit2 size={16} />
