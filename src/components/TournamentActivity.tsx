@@ -334,7 +334,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                 <div className="col-span-1 md:col-span-2">
                     <div className="flex items-center gap-3 mb-3">
                         <span className={`w-6 h-6 flex items-center justify-center rounded-lg text-[10px] font-black shrink-0 transition-all ${newTournament.match_type === 'Double' ? 'bg-orange-500 text-white shadow-lg' : 'bg-blue-500 text-white shadow-lg'}`}>
-                            {newTournament.match_type === 'Double' ? 'W' : 'S'}
+                            {newTournament.match_type === 'Double' ? 'D' : 'S'}
                         </span>
                         <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest">大会名 / Tournament Name</label>
                     </div>
@@ -440,7 +440,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                         const isDouble = typeRaw.includes('double');
                                                         return (
                                                             <span className={`w-5 h-5 flex items-center justify-center rounded text-[10px] font-black shrink-0 ${isDouble ? 'bg-orange-500 text-white shadow-sm' : 'bg-blue-500 text-white shadow-sm'}`}>
-                                                                {isDouble ? 'W' : 'S'}
+                                                                {isDouble ? 'D' : 'S'}
                                                             </span>
                                                         );
                                                     })()}
