@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
-import { Search, UserPlus, Star, Loader2, Trash2 } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Search, Star, Loader2, Trash2 } from "lucide-react";
 import { supabase } from "../utils/supabaseClient";
 import MultiPlayerChart from "./MultiPlayerChart";
+import { useManagedPlayers } from "../contexts/ManagedPlayerContext";
+import { Button, Input, Card } from "./ui";
 
 interface Player {
     player_id: string;
@@ -13,37 +15,20 @@ interface Player {
     gender: string;
 }
 
-interface ScoutHubProps {
-    activeManagedPlayerId: string | null;
-}
-
-export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
+export default function ScoutHub() {
+    const { activeManagedPlayerId, activeManagedPlayer } = useManagedPlayers();
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<Player[]>([]);
     const [rivals, setRivals] = useState<Player[]>([]);
-    const [managedPlayer, setManagedPlayer] = useState<Player | null>(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [hiddenRivalIds, setHiddenRivalIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (activeManagedPlayerId) {
-            fetchManagedPlayer();
             fetchRivals();
         }
     }, [activeManagedPlayerId]);
-
-    const fetchManagedPlayer = async () => {
-        const { data, error } = await supabase
-            .from("players")
-            .select("*")
-            .eq("player_id", activeManagedPlayerId)
-            .single();
-        
-        if (!error && data) {
-            setManagedPlayer(data as Player);
-        }
-    };
 
     const fetchRivals = async () => {
         setLoading(true);
@@ -68,7 +53,10 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
                     .in("player_id", rivalIds);
 
                 if (playersError) throw playersError;
-                setRivals(playersData as Player[] || []);
+                
+                // Sort rivals by ranking points (desc)
+                const sortedRivals = (playersData as Player[] || []).sort((a, b) => b.ranking_point - a.ranking_point);
+                setRivals(sortedRivals);
             } else {
                 setRivals([]);
             }
@@ -81,7 +69,7 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
 
     const handleSearch = async (query: string) => {
         setSearchQuery(query);
-        if (query.length < 2) {
+        if (query.trim().length < 1) {
             setSearchResults([]);
             return;
         }
@@ -99,28 +87,24 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
 
     const handleAddRival = async (player: Player) => {
         if (!activeManagedPlayerId) return;
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-
         setActionLoading(player.player_id);
-
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
             const { error } = await supabase
                 .from("user_watched_players")
-                .insert({
+                .insert([{
                     user_id: session.user.id,
-                    target_managed_player_id: activeManagedPlayerId,
                     player_id: player.player_id,
-                    player_type: 'opponent'
-                });
+                    player_type: "opponent",
+                    target_managed_player_id: activeManagedPlayerId
+                }]);
 
             if (error) throw error;
-            
-            setRivals(prev => [...prev, player]);
-            // Removed clearing of search results to allow immediate toggle
-            
-            // Notify other components
-            window.dispatchEvent(new CustomEvent('watched-players-changed', { detail: { playerType: 'opponent' } }));
+            await fetchRivals();
+            setSearchQuery("");
+            setSearchResults([]);
         } catch (error) {
             console.error("Error adding rival:", error);
         } finally {
@@ -128,208 +112,178 @@ export default function ScoutHub({ activeManagedPlayerId }: ScoutHubProps) {
         }
     };
 
-    const handleToggleVisibility = (playerId: string) => {
-        setHiddenRivalIds(prev => {
-            const next = new Set(prev);
-            if (next.has(playerId)) {
-                next.delete(playerId);
-            } else {
-                next.add(playerId);
-            }
-            // Emit event to notify MultiPlayerChart
-            window.dispatchEvent(new CustomEvent('player-visibility-changed', { 
-                detail: { playerType: 'opponent', hiddenIds: Array.from(next) } 
-            }));
-            return next;
-        });
-    };
-
-    const handleRemoveRival = async (rivalId: string) => {
-        if (!activeManagedPlayerId) return;
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-
+    const handleDeleteRival = async (rivalId: string) => {
+        if (!activeManagedPlayerId || !window.confirm("この対戦相手をリストから削除しますか？")) return;
         setActionLoading(rivalId);
-        
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
             const { error } = await supabase
                 .from("user_watched_players")
                 .delete()
                 .eq("user_id", session.user.id)
-                .eq("target_managed_player_id", activeManagedPlayerId)
                 .eq("player_id", rivalId)
-                .eq("player_type", 'opponent');
+                .eq("target_managed_player_id", activeManagedPlayerId)
+                .eq("player_type", "opponent");
 
             if (error) throw error;
             setRivals(prev => prev.filter(r => r.player_id !== rivalId));
-
-            // Notify other components
-            window.dispatchEvent(new CustomEvent('watched-players-changed', { detail: { playerType: 'opponent' } }));
         } catch (error) {
-            console.error("Error removing rival:", error);
+            console.error("Error deleting rival:", error);
         } finally {
             setActionLoading(null);
         }
     };
 
-    return (
-        <div className="max-w-5xl mx-auto space-y-8 pb-32">
-            <div className="relative">
-                <div className="glass-panel p-4 flex items-center gap-3 bg-gray-50">
-                    <Search className="text-gray-400" size={20} />
-                    <input 
-                        type="search" 
-                        placeholder="対戦相手を検索して登録..." 
-                        className="flex-1 bg-transparent outline-none text-gray-800 placeholder:text-gray-400 font-medium"
-                        value={searchQuery}
-                        onChange={(e) => handleSearch(e.target.value)}
-                    />
+    const toggleRivalVisibility = (rivalId: string) => {
+        setHiddenRivalIds(prev => {
+            const next = new Set(prev);
+            if (next.has(rivalId)) next.delete(rivalId);
+            else next.add(rivalId);
+            return next;
+        });
+    };
+
+    const chartComparisonIds = useMemo(() => {
+        const visibleRivalIds = rivals
+            .filter(r => !hiddenRivalIds.has(r.player_id))
+            .map(r => r.player_id);
+        return visibleRivalIds;
+    }, [rivals, hiddenRivalIds]);
+
+    if (!activeManagedPlayerId) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                    <Star className="text-gray-300" size={32} />
                 </div>
-
-                {searchResults.length > 0 && (
-                    <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-xl border border-tennis-green-100 overflow-hidden z-30 max-h-[60vh] overflow-y-auto">
-                        {searchResults.map(player => {
-                            const isManaged = player.player_id === activeManagedPlayerId;
-                            const isAlreadyRival = rivals.some(r => r.player_id === player.player_id);
-                            
-                            return (
-                                <div key={player.player_id} className="p-4 flex items-center justify-between hover:bg-tennis-green-50 transition-colors border-b border-gray-50 last:border-none">
-                                    <div className="flex items-center gap-3">
-                                        <div>
-                                            <p className="font-bold text-gray-800">
-                                                {player.full_name}
-                                                {isManaged && <span className="ml-2 text-[8px] bg-tennis-green-100 text-tennis-green-600 px-1 py-0.5 rounded">管理選手</span>}
-                                            </p>
-                                            <p className="text-xs text-gray-500">{player.team} | {player.category}</p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            if (isManaged) return;
-                                            if (isAlreadyRival) {
-                                                handleRemoveRival(player.player_id);
-                                            } else {
-                                                handleAddRival(player);
-                                            }
-                                        }}
-                                        disabled={isManaged || actionLoading === player.player_id}
-                                        className={`p-2 rounded-full transition-all ${
-                                            isManaged
-                                                ? "text-gray-200 cursor-default opacity-50"
-                                                : isAlreadyRival
-                                                    ? "text-tennis-green-600 bg-tennis-green-50 hover:bg-tennis-green-100"
-                                                    : "text-gray-400 hover:text-tennis-green-600 hover:bg-tennis-green-50"
-                                        }`}
-                                    >
-                                        {actionLoading === player.player_id ? (
-                                            <Loader2 size={24} className="animate-spin" />
-                                        ) : isAlreadyRival ? (
-                                            <Star size={24} fill="currentColor" />
-                                        ) : (
-                                            <UserPlus size={24} />
-                                        )}
-                                    </button>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
+                <h3 className="text-lg font-bold text-gray-900">管理選手が選択されていません</h3>
+                <p className="text-gray-500 mt-2">ダッシュボードで選手を選択するか、新しく登録してください。</p>
             </div>
+        );
+    }
 
-            <div className="space-y-6">
-                <div className="glass-panel p-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-base font-bold text-gray-800 flex items-center gap-2">
-                            <Star className="text-amber-400" fill="currentColor" size={18} />
-                            対戦相手一覧
-                            <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-1 rounded-full ml-2">{rivals.length} / 10</span>
-                        </h3>
+    return (
+        <div className="space-y-8 pb-20">
+            <header className="flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-tennis-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-tennis-green-100">
+                        <Search className="text-white" size={20} />
                     </div>
-                    
-                    {loading ? (
-                        <div className="py-12 flex flex-col items-center justify-center text-gray-400">
-                            <Loader2 className="animate-spin mb-2" />
-                            <p className="text-sm">読み込み中...</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {rivals.map(rival => {
-                                const mPoint = managedPlayer?.ranking_point || 0;
-                                const rPoint = rival.ranking_point || 0;
-                                const diff = rPoint - mPoint;
-                                const sign = diff > 0 ? "+" : "";
-                                const diffColorClass = diff > 0 ? "text-rose-500" : diff < 0 ? "text-blue-500" : "text-gray-400";
+                    <h2 className="text-xl font-black text-gray-900 tracking-tight">対戦相手スカウト</h2>
+                </div>
+                <p className="text-sm text-gray-500 font-medium">
+                    <span className="font-black text-tennis-green-600">{activeManagedPlayer?.full_name || "選手"}</span> さんのライバルを登録・分析します。
+                </p>
+            </header>
 
+            <div className="grid grid-cols-1 gap-8">
+                <Card className="p-6">
+                    <div className="relative">
+                        <Input
+                            placeholder="名前で対戦相手を検索..."
+                            value={searchQuery}
+                            onChange={(e) => handleSearch(e.target.value)}
+                            className="bg-gray-50 border-gray-100 text-lg font-bold h-14 pl-12"
+                        />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    </div>
+
+                    {searchResults.length > 0 && (
+                        <div className="mt-4 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                            {searchResults.map(p => {
+                                const isManaged = p.player_id === activeManagedPlayerId;
+                                const isAlreadyRival = rivals.some(r => r.player_id === p.player_id);
                                 return (
-                                    <div
-                                        key={rival.player_id}
-                                        className="relative group"
-                                    >
-                                        <button
-                                            onClick={() => handleToggleVisibility(rival.player_id)}
-                                            className={`w-full p-4 rounded-2xl shadow-sm border flex items-center justify-between transition-all text-left ${
-                                                hiddenRivalIds.has(rival.player_id)
-                                                ? "bg-gray-50 border-gray-100 opacity-60"
-                                                : "bg-white border-tennis-green-50 hover:border-tennis-green-200 hover:shadow-md"
-                                            }`}
+                                    <div key={p.player_id} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+                                        <div>
+                                            <p className="font-black text-gray-900">{p.full_name}</p>
+                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{p.team} | {p.category}</p>
+                                        </div>
+                                        <Button
+                                            disabled={isManaged || isAlreadyRival || actionLoading === p.player_id}
+                                            onClick={() => handleAddRival(p)}
+                                            size="sm"
+                                            variant={isAlreadyRival ? "secondary" : "primary"}
                                         >
-                                            <div className="flex items-center gap-4 flex-1 min-w-0">
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <p className={`font-bold text-lg truncate ${
-                                                            hiddenRivalIds.has(rival.player_id) ? "text-gray-400" : "text-gray-800"
-                                                        }`}>{rival.full_name}</p>
-                                                        <span className={`text-xs font-black px-2 py-0.5 rounded shadow-sm ${
-                                                            hiddenRivalIds.has(rival.player_id) ? "bg-gray-100 text-gray-300" : `bg-gray-50 ${diffColorClass}`
-                                                        }`}>
-                                                            {sign}{diff.toLocaleString()}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-xs text-gray-400 truncate">{rival.team || "所属なし"}</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right shrink-0 ml-2">
-                                                <p className={`text-sm font-black ${
-                                                    hiddenRivalIds.has(rival.player_id) ? "text-gray-300" : "text-gray-800"
-                                                }`}>{rPoint.toLocaleString()} <span className="text-[10px] font-bold">pt</span></p>
-                                                <p className="text-[10px] text-gray-400 font-bold">{rival.category}</p>
-                                            </div>
-                                        </button>
-                                        
-                                        <button 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleRemoveRival(rival.player_id);
-                                            }}
-                                            className="absolute -top-2 -right-2 w-8 h-8 bg-white text-rose-400 rounded-full shadow-md border border-gray-100 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100"
-                                            title="削除"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
+                                            {actionLoading === p.player_id ? <Loader2 className="animate-spin" size={16} /> : 
+                                             isAlreadyRival ? "登録済み" : isManaged ? "本人" : "追加"}
+                                        </Button>
                                     </div>
                                 );
                             })}
-                            
-                            {rivals.length === 0 && !loading && (
-                                <div className="py-14 bg-white/50 rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center px-6 md:col-span-2">
-                                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-300">
-                                        <Search size={24} />
-                                    </div>
-                                    <h4 className="text-sm font-bold text-gray-500">対戦相手が未登録です</h4>
-                                    <p className="text-xs text-gray-400 mt-1">上の検索窓から選手を登録しましょう。</p>
-                                </div>
-                            )}
                         </div>
                     )}
+                </Card>
+
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">ライバルリスト</h3>
+                        <span className="text-xs font-bold bg-tennis-green-100 text-tennis-green-700 px-3 py-1 rounded-full">{rivals.length} Players</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {loading ? (
+                            <div className="col-span-full py-10 flex justify-center"><Loader2 className="animate-spin text-tennis-green-600" size={32} /></div>
+                        ) : rivals.length === 0 ? (
+                            <div className="col-span-full py-16 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+                                <p className="text-gray-400 font-bold">まだライバルが登録されていません。</p>
+                            </div>
+                        ) : (
+                            rivals.map(rival => {
+                                const isHidden = hiddenRivalIds.has(rival.player_id);
+                                return (
+                                    <Card key={rival.player_id} className={`p-4 transition-all ${isHidden ? "opacity-50 grayscale" : "shadow-lg bg-white"}`}>
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <button 
+                                                    onClick={() => toggleRivalVisibility(rival.player_id)}
+                                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isHidden ? "bg-gray-100 text-gray-300" : "bg-tennis-green-100 text-tennis-green-600"}`}
+                                                >
+                                                    <Star size={20} fill={isHidden ? "transparent" : "currentColor"} />
+                                                </button>
+                                                <div>
+                                                    <h4 className="font-black text-gray-900 truncate max-w-[120px]">{rival.full_name}</h4>
+                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{rival.category}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm font-black text-tennis-green-600">{rival.ranking_point}pt</p>
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">RANKING</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+                                            <span className="text-[10px] font-bold text-gray-500 truncate max-w-[150px]">{rival.team}</span>
+                                            <button 
+                                                onClick={() => handleDeleteRival(rival.player_id)}
+                                                disabled={actionLoading === rival.player_id}
+                                                className="p-2 text-gray-300 hover:text-rose-500 transition-colors"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </Card>
+                                );
+                            })
+                        )}
+                    </div>
                 </div>
 
-                <div className="bg-white rounded-3xl shadow-sm border border-tennis-green-50 overflow-hidden min-h-[400px] sm:min-h-[500px]">
-                    <MultiPlayerChart 
-                        playerType="opponent" 
-                        title="グラフ" 
-                        activeManagedPlayerId={activeManagedPlayerId}
-                        showControls={false}
-                    />
+                <div className="space-y-4">
+                    <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">ランキング比較</h3>
+                    <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl border border-gray-50">
+                        <MultiPlayerChart
+                            playerType="managed"
+                            title=""
+                            activeManagedPlayerId={activeManagedPlayerId}
+                            forceSelectedPlayerIds={chartComparisonIds}
+                            showControls={false}
+                        />
+                    </div>
+                    <p className="text-[10px] text-center font-bold text-gray-400 uppercase tracking-widest">
+                        ※ ライバル名の星アイコンをクリックしてチャートの表示/非表示を切り替えられます。
+                    </p>
                 </div>
             </div>
         </div>

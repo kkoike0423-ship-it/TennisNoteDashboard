@@ -13,7 +13,11 @@ const getErrorMessage = (error: unknown) => {
     return '';
 };
 
-export default function Auth() {
+interface AuthProps {
+    onAuthSuccess?: () => void;
+}
+
+export default function Auth({ onAuthSuccess }: AuthProps) {
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -47,6 +51,8 @@ export default function Auth() {
         });
         if (error) {
             setMessage({ text: errorMessageMapper(error), type: 'error' });
+        } else if (onAuthSuccess) {
+            onAuthSuccess();
         }
         setLoading(false);
     };

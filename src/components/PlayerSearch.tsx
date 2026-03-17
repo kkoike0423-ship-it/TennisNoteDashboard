@@ -1,15 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, Trash2, Loader2 } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import type { Player } from '../types/database';
+import { useManagedPlayers } from '../contexts/ManagedPlayerContext';
+import { Button, Input, Card } from './ui';
 
 interface PlayerSearchProps {
     playerType: 'managed' | 'opponent';
     title: string;
-    activeManagedPlayerId: string | null;
 }
 
-export default function PlayerSearch({ playerType, title, activeManagedPlayerId }: PlayerSearchProps) {
+export default function PlayerSearch({ playerType, title }: PlayerSearchProps) {
+    const { activeManagedPlayerId } = useManagedPlayers();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<Player[]>([]);
     const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set());
@@ -18,77 +20,68 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
     const [loading, setLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+    const fetchWatched = useCallback(async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
 
-    // Fetch initial watched players
-    useEffect(() => {
-        const fetchWatched = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
+        let dbQuery = supabase
+            .from('user_watched_players')
+            .select('player_id')
+            .eq('user_id', session.user.id)
+            .eq('player_type', playerType);
 
-            let dbQuery = supabase
-                .from('user_watched_players')
-                .select('player_id')
-                .eq('user_id', session.user.id)
-                .eq('player_type', playerType);
-
-            if (playerType === 'opponent') {
-                if (!activeManagedPlayerId) {
-                    setWatchedIds(new Set());
-                    setWatchedPlayersList([]);
-                    setRanks({});
-                    return;
-                }
-                dbQuery = dbQuery.eq('target_managed_player_id', activeManagedPlayerId);
+        if (playerType === 'opponent') {
+            if (!activeManagedPlayerId) {
+                setWatchedIds(new Set());
+                setWatchedPlayersList([]);
+                setRanks({});
+                return;
             }
+            dbQuery = dbQuery.eq('target_managed_player_id', activeManagedPlayerId);
+        }
 
-            const { data, error } = await dbQuery;
+        const { data, error } = await dbQuery;
 
-            if (!error && data) {
-                const ids = data.map(d => d.player_id);
-                setWatchedIds(new Set(ids));
+        if (!error && data) {
+            const ids = data.map(d => d.player_id);
+            setWatchedIds(new Set(ids));
 
-                // Also fetch full details for the list
-                if (ids.length > 0) {
-                    const { data: details } = await supabase
-                        .from('players')
-                        .select('*')
-                        .in('player_id', ids);
+            if (ids.length > 0) {
+                const { data: details } = await supabase.from('players').select('*').in('player_id', ids);
 
-                    if (details) {
-                        const playersDetail = details as Player[];
-                        setWatchedPlayersList(playersDetail);
+                if (details) {
+                    const playersDetail = details as Player[];
+                    setWatchedPlayersList(playersDetail);
 
-                        // Fetch latest ranks for these players in their primary categories
-                        const ranksMap: Record<string, number | null> = {};
-                        for (const p of playersDetail) {
-                            const { data: rData } = await supabase
-                                .from('category_rankings')
-                                .select('rank')
-                                .eq('player_id', p.player_id)
-                                .eq('category', p.category)
-                                .order('year_month', { ascending: false })
-                                .limit(1);
+                    // Optimized: Fetch all ranks in one query
+                    const { data: ranksData } = await supabase
+                        .from('category_rankings')
+                        .select('player_id, rank, year_month, category')
+                        .in('player_id', ids)
+                        .order('year_month', { ascending: false });
 
-                            if (rData?.[0]) {
-                                ranksMap[p.player_id] = rData[0].rank;
-                            } else {
-                                ranksMap[p.player_id] = null;
-                            }
-                        }
-                        setRanks(ranksMap);
-                    }
-                } else {
-                    setWatchedPlayersList([]);
-                    setRanks({});
+                    const ranksMap: Record<string, number | null> = {};
+                    ids.forEach(id => {
+                        const player = playersDetail.find(p => p.player_id === id);
+                        const newestRank = ranksData?.find(r => r.player_id === id && r.category === player?.category);
+                        ranksMap[id] = newestRank?.rank || null;
+                    });
+                    setRanks(ranksMap);
                 }
             } else {
                 setWatchedPlayersList([]);
-                setWatchedIds(new Set());
                 setRanks({});
             }
-        };
-        fetchWatched();
+        } else {
+            setWatchedPlayersList([]);
+            setWatchedIds(new Set());
+            setRanks({});
+        }
     }, [playerType, activeManagedPlayerId]);
+
+    useEffect(() => {
+        fetchWatched();
+    }, [fetchWatched]);
 
     // Search DB based on query
     useEffect(() => {
@@ -223,17 +216,19 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                         const playersDetail = details as Player[];
                         setWatchedPlayersList(playersDetail);
 
+                        // Optimized: single query for all ranks
+                        const { data: refreshRanksData } = await supabase
+                            .from('category_rankings')
+                            .select('player_id, rank, year_month, category')
+                            .in('player_id', ids)
+                            .order('year_month', { ascending: false });
+
                         const ranksMap: Record<string, number | null> = {};
-                        for (const p of playersDetail) {
-                            const { data: rData } = await supabase
-                                .from('category_rankings')
-                                .select('rank')
-                                .eq('player_id', p.player_id)
-                                .eq('category', p.category)
-                                .order('year_month', { ascending: false })
-                                .limit(1);
-                            ranksMap[p.player_id] = rData?.[0]?.rank ?? null;
-                        }
+                        ids.forEach(id => {
+                            const player = playersDetail.find(p => p.player_id === id);
+                            const best = refreshRanksData?.find(r => r.player_id === id && r.category === player?.category);
+                            ranksMap[id] = best?.rank ?? null;
+                        });
                         setRanks(ranksMap);
                     }
                 } else {
@@ -246,13 +241,13 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
     };
 
     return (
-        <div className="glass-panel p-6 shadow-sm mt-6">
+        <Card className="p-6 shadow-sm mt-6">
             <h3 className="text-lg font-bold text-gray-800 mb-4">{title}</h3>
 
             <div className="relative mb-6">
-                <Search className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-                <input
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tennis-green-500 focus:border-transparent outline-none transition-all bg-gray-50"
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
+                <Input
+                    className="pl-10"
                     type="text"
                     placeholder="名前、チーム、またはIDで検索 (例: 田中, TN-1, ライズ)"
                     value={query}
@@ -288,20 +283,16 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center">
-                                    <button
-                                        onClick={() => handleToggleWatch(player.player_id)}
-                                        disabled={actionLoading === player.player_id}
-                                        className="p-2.5 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-full transition-all shadow-sm flex items-center justify-center"
-                                        title="登録解除"
-                                    >
-                                        {actionLoading === player.player_id ? (
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                        ) : (
-                                            <Trash2 className="w-5 h-5" />
-                                        )}
-                                    </button>
-                                </div>
+                                <Button
+                                    variant="danger"
+                                    size="icon"
+                                    loading={actionLoading === player.player_id}
+                                    onClick={() => handleToggleWatch(player.player_id)}
+                                    disabled={actionLoading === player.player_id}
+                                    title="登録解除"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
                             </li>
                         ))}
                     </ul>
@@ -333,23 +324,16 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
                                     </div>
                                 </div>
 
-                                <button
+                                <Button
+                                    variant={isWatched ? 'danger' : 'ghost'}
+                                    size="icon"
+                                    loading={actionLoading === player.player_id}
                                     onClick={() => handleToggleWatch(player.player_id)}
                                     disabled={actionLoading === player.player_id}
-                                    className={`p-2 rounded-full transition-all flex items-center justify-center w-10 h-10 ${isWatched
-                                        ? 'bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white'
-                                        : 'bg-gray-100 text-gray-500 hover:bg-tennis-green-100 hover:text-tennis-green-600'
-                                        }`}
-                                    title={isWatched ? "Remove from watched" : "Add to watched"}
+                                    title={isWatched ? '登録解除' : '登録'}
                                 >
-                                    {actionLoading === player.player_id ? (
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                    ) : isWatched ? (
-                                        <Trash2 className="w-5 h-5" />
-                                    ) : (
-                                        <Plus className="w-5 h-5" />
-                                    )}
-                                </button>
+                                    {isWatched ? <Trash2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                </Button>
                             </li>
                         );
                     })}
@@ -357,6 +341,6 @@ export default function PlayerSearch({ playerType, title, activeManagedPlayerId 
             ) : query.length > 1 ? (
                 <p className="text-gray-500 text-center py-4">該当する選手が見つかりません。</p>
             ) : null}
-        </div>
+        </Card>
     );
 }
