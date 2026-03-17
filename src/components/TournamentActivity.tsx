@@ -49,6 +49,17 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
     }
   }, [activeManagedPlayerId]);
 
+  useEffect(() => {
+    if (expandedTournament) {
+      setTimeout(() => {
+        const element = document.getElementById(`match-list-${expandedTournament}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 300); // Allow time for expansion animation
+    }
+  }, [expandedTournament]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -475,7 +486,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                         <tr>
                                             <td colSpan={3} className="p-0">
                                                 <div className="bg-gray-50 border-x-4 border-b-4 border-gray-900 rounded-b-[2rem] p-4 sm:p-6 animate-in slide-in-from-top-2 duration-300 shadow-2xl mb-8">
-                                                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
+                                                    <div id={`match-list-${t.tournament_id}`} className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200 scroll-mt-20">
                                                         <h5 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em] flex items-center gap-2">
                                                             <LayoutGrid size={16} className="text-tennis-green-600" /> 試合記録
                                                         </h5>
