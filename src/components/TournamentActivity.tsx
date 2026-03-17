@@ -75,6 +75,20 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
     }
   }, [editingTournament]);
 
+  useEffect(() => {
+    if (editingGame) {
+      setTimeout(() => {
+        const element = document.getElementById('game-edit-form');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // Focus the first input (opponent search)
+          const input = element.querySelector('input');
+          if (input) input.focus();
+        }
+      }, 100);
+    }
+  }, [editingGame]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -716,10 +730,10 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                     </div>
 
                                                     {editingGame?.tournamentId === t.tournament_id && (
-                                                        <div className="mt-8 p-5 sm:p-10 bg-gray-900 rounded-3xl text-white shadow-3xl animate-in zoom-in-95 duration-300 relative overflow-hidden">
+                                                        <div id="game-edit-form" className="mt-8 p-5 sm:p-10 bg-gray-900 rounded-3xl text-white shadow-3xl animate-in zoom-in-95 duration-300 relative overflow-hidden scroll-mt-24">
                                                             <div className="absolute top-0 right-0 w-64 h-64 bg-tennis-green-600/10 blur-[100px] rounded-full"></div>
                                                             <div className="flex items-center justify-between mb-6 relative z-10">
-                                                                <h6 className="font-bold text-lg sm:text-2xl tracking-tighter">Enter Match Result / 試合結果の記録</h6>
+                                                                <h6 className="font-bold text-lg sm:text-2xl tracking-tighter">試合結果の記録</h6>
                                                                 <div className="flex items-center gap-2">
                                                                     {editingGame.game.game_id && !editingGame.game.game_id.startsWith('G-') && (
                                                                         <button 
