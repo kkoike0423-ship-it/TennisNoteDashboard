@@ -83,6 +83,15 @@ const getErrorMessage = (error: unknown) => {
     return String(error);
 };
 
+const normalizeDate = (d: string) => {
+    if (!d) return '';
+    // Handle "YYYY/MM/DD" or other variants
+    let datePart = d;
+    if (d.includes(' ')) datePart = d.split(' ')[0];
+    if (d.includes('T')) datePart = d.split('T')[0];
+    return datePart.replace(/\//g, '-');
+};
+
 export const parseAndUploadZip = async (file: File, onProgress: (msg: string) => void) => {
     try {
         const zip = new JSZip();
@@ -208,9 +217,9 @@ export const parseAndUploadZip = async (file: File, onProgress: (msg: string) =>
                 category: row.category,
                 format: row.format,
                 location: row.location,
-                date: row.date,
+                date: normalizeDate(row.date || ''),
                 tournament_code: row.tournamentCode,
-                tournament_date: row.tournamentDate,
+                tournament_date: normalizeDate(row.tournamentDate || ''),
                 tournament_name: row.tournamentName,
                 venue: row.venue,
                 match_type: row.matchType
