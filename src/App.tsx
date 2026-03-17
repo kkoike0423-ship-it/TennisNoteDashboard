@@ -5,10 +5,9 @@ import Auth from './components/Auth';
 import DashboardOverview from './components/DashboardOverview';
 import PlayerSearch from './components/PlayerSearch';
 import MultiPlayerChart from './components/MultiPlayerChart';
-import TournamentAnalysis from './components/TournamentAnalysis';
 import DataManagement from './components/DataManagement';
 import ScoutHub from './components/ScoutHub';
-import { Trash2, Menu, X, LogOut, Upload, BarChart3, Search, Database, Download, Presentation, ChevronRight } from 'lucide-react';
+import { Trash2, Menu, X, LogOut, Upload, BarChart3, Search, Database, Download, ChevronRight } from 'lucide-react';
 import type { Player } from './types/database';
 import { TournamentActivity } from './components/TournamentActivity';
 
@@ -16,7 +15,7 @@ function App() {
   const apkDownloadUrl = import.meta.env.VITE_ANDROID_APK_URL || 'https://ubuophysnullisrzyulj.supabase.co/storage/v1/object/public/TennisNote/app-release.apk';
   const [session, setSession] = useState<Session | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [activeMenu, setActiveMenu] = useState<'overview' | 'scout' | 'import' | 'draw' | 'data'>('data');
+  const [activeMenu, setActiveMenu] = useState<'overview' | 'scout' | 'import' | 'data'>('data');
   const [managedPlayers, setManagedPlayers] = useState<Player[]>([]);
   const [activeManagedPlayerId, setActiveManagedPlayerId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -207,13 +206,6 @@ function App() {
               <>
                 <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Admin Tools</p>
                 <button
-                  onClick={() => { setActiveMenu('draw'); setIsSidebarOpen(false); }}
-                  className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'draw' ? 'bg-tennis-green-50 text-tennis-green-700' : 'text-gray-600 hover:bg-tennis-green-50'}`}
-                >
-                  <Presentation className="w-5 h-5 mr-3" />
-                  ドロー分析
-                </button>
-                <button
                   onClick={() => { setActiveMenu('import'); setIsSidebarOpen(false); }}
                   className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${activeMenu === 'import' ? 'bg-tennis-green-50 text-tennis-green-700' : 'text-gray-600 hover:bg-tennis-green-50'}`}
                 >
@@ -283,8 +275,7 @@ function App() {
             <h1 className="text-base sm:text-lg font-bold text-gray-800 tracking-tight truncate max-w-[120px] sm:max-w-none whitespace-nowrap">
               {activeMenu === 'overview' ? 'ダッシュボード' :
                 activeMenu === 'scout' ? '対戦相手' :
-                  activeMenu === 'draw' ? 'ドロー分析' :
-                    activeMenu === 'data' ? 'ランキング' : '設定'}
+                  activeMenu === 'data' ? 'ランキング' : '設定'}
             </h1>
           </div>
           
@@ -383,7 +374,6 @@ function App() {
                <ScoutHub activeManagedPlayerId={activeManagedPlayerId} />
             )}
 
-            {activeMenu === 'draw' && session?.user?.email === 'kkoike0423@gmail.com' && <TournamentAnalysis />}
             {activeMenu === 'data' && (
               <DataManagement 
                 initialCategory={activeManagedPlayer?.category} 
@@ -425,16 +415,6 @@ function App() {
             <span className="text-[9px] sm:text-[10px] truncate w-full text-center">ランキング</span>
           </button>
 
-          {session?.user?.email === 'kkoike0423@gmail.com' && (
-            <button
-              onClick={() => setActiveMenu('draw')}
-              className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 min-w-0 ${activeMenu === 'draw' ? 'text-tennis-green-600 scale-105 font-bold' : 'text-gray-400'}`}
-            >
-              <Presentation size={20} className="sm:size-6" strokeWidth={activeMenu === 'draw' ? 2.5 : 2} />
-              <span className="text-[9px] sm:text-[10px] truncate w-full text-center">ドロー</span>
-            </button>
-          )}
-          
           <button
             onClick={() => setIsSidebarOpen(true)}
             className="flex flex-col items-center gap-1 transition-all flex-1 py-1 text-gray-400 min-w-0"
