@@ -38,6 +38,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
   });
 
   const [editingGame, setEditingGame] = useState<{tournamentId: string, game: Partial<GameWithOpponent>} | null>(null);
+  const [editingTournament, setEditingTournament] = useState<Partial<Tournament> | null>(null);
   const [opponentSearch, setOpponentSearch] = useState('');
   const [opponentSearch2, setOpponentSearch2] = useState('');
   const [activeSearchIndex, setActiveSearchIndex] = useState<1 | 2>(1);
@@ -182,6 +183,25 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
         const { error } = await supabase.from('tournaments').delete().eq('tournament_id', tId);
         if (error) alert('Error: ' + error.message);
         else fetchData();
+    } finally {
+        setIsProcessing(false);
+    }
+  };
+
+  const handleUpdateTournament = async () => {
+    if (!editingTournament || !editingTournament.tournament_id || isProcessing) return;
+    setIsProcessing(true);
+    try {
+        const { tournament_id, games, ...payload } = editingTournament as any;
+        const { error } = await supabase.from('tournaments')
+            .update(payload)
+            .eq('tournament_id', tournament_id);
+            
+        if (error) alert('Error: ' + error.message);
+        else { 
+            setEditingTournament(null); 
+            fetchData(); 
+        }
     } finally {
         setIsProcessing(false);
     }
@@ -404,6 +424,78 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
           </div>
         )}
 
+        {editingTournament && (
+          <div className="mb-8 p-5 sm:p-10 bg-gray-900 rounded-3xl text-white shadow-3xl animate-in zoom-in-95 duration-300 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-tennis-green-600/10 blur-[100px] rounded-full"></div>
+            <div className="flex justify-between items-center mb-6 relative z-10">
+              <h4 className="font-bold text-lg sm:text-2xl tracking-tighter">Edit Tournament / 大会情報の編集</h4>
+              <button disabled={isProcessing} onClick={() => setEditingTournament(null)} className="w-10 h-10 flex items-center justify-center bg-white/10 rounded-full hover:bg-white/20 transition-all active:scale-90 disabled:opacity-30"><X size={20} /></button>
+            </div>
+            
+            <div className="space-y-6 relative z-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="col-span-1 md:col-span-2">
+                    <div className="flex items-center gap-3 mb-3">
+                        <span className={`w-6 h-6 flex items-center justify-center rounded-lg text-[10px] font-black shrink-0 transition-all ${editingTournament.match_type === 'Double' ? 'bg-orange-500 text-white shadow-lg' : 'bg-blue-500 text-white shadow-lg'}`}>
+                            {editingTournament.match_type === 'Double' ? 'D' : 'S'}
+                        </span>
+                        <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest">大会名 / Tournament Name</label>
+                    </div>
+                    <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none text-base font-bold text-white transition-all disabled:opacity-50 placeholder:text-white/20" value={editingTournament.name || editingTournament.tournament_name || ''} onChange={e => setEditingTournament({...editingTournament, name: e.target.value})} />
+                </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-3">開催日 / Date</label>
+                    <input disabled={isProcessing} type="date" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none disabled:opacity-50 font-bold text-sm text-white" value={editingTournament.date || editingTournament.tournament_date || ''} onChange={e => setEditingTournament({...editingTournament, date: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-3">会場 / Location</label>
+                    <input disabled={isProcessing} type="text" className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none disabled:opacity-50 font-bold text-sm text-white placeholder:text-white/20" value={editingTournament.location || ''} onChange={e => setEditingTournament({...editingTournament, location: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-3">カテゴリー / Category</label>
+                    <select 
+                        disabled={isProcessing} 
+                        className="w-full px-5 py-4 bg-white/10 border-2 border-white/10 rounded-xl focus:border-tennis-green-400 outline-none disabled:opacity-50 font-bold text-sm text-white"
+                        value={editingTournament.category || ''}
+                        onChange={e => setEditingTournament({...editingTournament, category: e.target.value})}
+                    >
+                        <option value="" className="bg-gray-900 text-white">カテゴリーを選択...</option>
+                        {['U9', 'U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U18', 'Open'].map(cat => (
+                            <option key={cat} value={cat} className="bg-gray-900 text-white">{cat}</option>
+                        ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-3">種目 / Match Type</label>
+                    <div className="flex gap-3">
+                        {[
+                            { label: 'シングルス', value: 'Single' },
+                            { label: 'ダブルス', value: 'Double' }
+                        ].map(type => (
+                            <button
+                                key={type.value}
+                                disabled={isProcessing}
+                                onClick={() => setEditingTournament({...editingTournament, match_type: type.value})}
+                                className={`flex-1 py-4 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${editingTournament.match_type === type.value ? 'bg-tennis-green-500 text-white shadow-xl scale-105 z-10' : 'bg-white/5 text-white/30 hover:bg-white/10 border border-white/10'}`}
+                            >
+                                {type.label}
+                            </button>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex gap-4 mt-8">
+                    <button disabled={isProcessing} onClick={handleUpdateTournament} className="flex-[2] py-4 bg-tennis-green-500 text-white rounded-xl text-xs font-black hover:bg-tennis-green-400 shadow-xl transition-all active:scale-95 flex justify-center items-center gap-2">
+                        {isProcessing && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
+                        変更を保存
+                    </button>
+                    <button disabled={isProcessing} onClick={() => setEditingTournament(null)} className="flex-1 py-4 bg-white/10 text-white rounded-xl text-xs font-bold hover:bg-white/20 transition-all disabled:opacity-50">キャンセル</button>
+                </div>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="py-20 text-center flex flex-col items-center gap-4">
             <div className="w-12 h-12 border-4 border-tennis-green-100 border-t-tennis-green-600 rounded-full animate-spin"></div>
@@ -471,6 +563,13 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                 </span>
                                                 <div className="flex items-center gap-2">
                                                     {expandedTournament === t.tournament_id ? <ChevronUp size={16} /> : <ChevronDown size={16} className={expandedTournament === t.tournament_id ? 'text-white/30' : 'text-gray-300'} />}
+                                                    <button 
+                                                        disabled={isProcessing}
+                                                        onClick={(e) => { e.stopPropagation(); setEditingTournament({ ...t }); }} 
+                                                        className={`p-2 rounded-xl transition-all ${expandedTournament === t.tournament_id ? 'bg-tennis-green-500 text-white shadow-lg' : 'opacity-0 group-hover:opacity-100 text-tennis-green-600 bg-tennis-green-50 hover:bg-tennis-green-100'}`}
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </button>
                                                     <button 
                                                         disabled={isProcessing}
                                                         onClick={(e) => { e.stopPropagation(); handleDeleteTournament(t.tournament_id); }} 
