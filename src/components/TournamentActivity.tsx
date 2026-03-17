@@ -61,6 +61,20 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
     }
   }, [expandedTournament]);
 
+  useEffect(() => {
+    if (editingTournament) {
+      setTimeout(() => {
+        const element = document.getElementById('tournament-edit-form');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // Focus the name input
+          const input = element.querySelector('input');
+          if (input) input.focus();
+        }
+      }, 100);
+    }
+  }, [editingTournament]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -425,10 +439,10 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
         )}
 
         {editingTournament && (
-          <div className="mb-8 p-5 sm:p-10 bg-gray-900 rounded-3xl text-white shadow-3xl animate-in zoom-in-95 duration-300 relative overflow-hidden">
+          <div id="tournament-edit-form" className="mb-8 p-5 sm:p-10 bg-gray-900 rounded-3xl text-white shadow-3xl animate-in zoom-in-95 duration-300 relative overflow-hidden scroll-mt-24">
             <div className="absolute top-0 right-0 w-64 h-64 bg-tennis-green-600/10 blur-[100px] rounded-full"></div>
             <div className="flex justify-between items-center mb-6 relative z-10">
-              <h4 className="font-bold text-lg sm:text-2xl tracking-tighter">Edit Tournament / 大会情報の編集</h4>
+              <h4 className="font-bold text-lg sm:text-2xl tracking-tighter">大会情報の編集</h4>
               <button disabled={isProcessing} onClick={() => setEditingTournament(null)} className="w-10 h-10 flex items-center justify-center bg-white/10 rounded-full hover:bg-white/20 transition-all active:scale-90 disabled:opacity-30"><X size={20} /></button>
             </div>
             
