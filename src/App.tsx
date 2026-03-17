@@ -39,13 +39,17 @@ function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session && activeMenu === 'data') {
-        setActiveMenu('overview');
-      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, []); // We keep this empty for initial setup
+
+  // Separate effect to handle the initial redirect after login
+  useEffect(() => {
+    if (session && activeMenu === 'data') {
+      setActiveMenu('overview');
+    }
+  }, [session, activeMenu]);
 
   const fetchManagedPlayers = useCallback(async () => {
     const { data: { session: currentSession } } = await supabase.auth.getSession();

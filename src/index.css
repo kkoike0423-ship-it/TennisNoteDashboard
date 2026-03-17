@@ -43,14 +43,16 @@
     /* Standard base size for better PC/Tablet readability */
     font-size: 16px;
     
-    /* Subtle scaling for mobile, but keeping it anchored near 16px */
+    /* Force 16px base on mobile to prevent any automatic zoom */
     @media (max-width: 768px) {
-      font-size: clamp(15px, 4vw, 17px);
+      font-size: 16px;
     }
   }
 
   body {
     @apply bg-tennis-green-50 text-tennis-green-900 font-sans antialiased min-h-screen selection:bg-tennis-green-200 selection:text-tennis-green-900;
+    /* Prevent double-tap zoom */
+    touch-action: manipulation;
   }
 }
 
@@ -58,11 +60,11 @@
   .glass-panel {
     @apply bg-white/80 backdrop-blur-md border border-white/40 shadow-xl rounded-2xl;
   }
+}
 
-  /* Prevent auto-zoom on iOS focus */
-  input, textarea, select {
-    font-size: 16px !important;
-  }
+/* Global input styling to prevent focus-zoom */
+input, textarea, select {
+  font-size: 17px !important;
 }
 
 /* Custom Scrollbar for better aesthetics */

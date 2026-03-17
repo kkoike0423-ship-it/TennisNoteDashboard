@@ -141,6 +141,68 @@ export default function TournamentAnalysis() {
         console.log(`[OCR Log] ${message}`);
     };
 
+    const preprocessImage = (canvas: HTMLCanvasElement) => {
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+
+        addLog('画像の前処理（高度な二値化）を開始...');
+        const width = canvas.width;
+        const height = canvas.height;
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+
+        // Step 1: Create a grayscale buffer
+        const grays = new Uint8Array(width * height);
+        for (let i = 0; i < data.length; i += 4) {
+            grays[i / 4] = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+        }
+
+        /**
+         * Simple Block-based Adaptive Thresholding
+         * Divide image into blocks and compute local average brightness.
+         */
+        const blockSize = 32;
+        const blocksW = Math.ceil(width / blockSize);
+        const blocksH = Math.ceil(height / blockSize);
+        const blockMeans = new Float32Array(blocksW * blocksH);
+
+        for (let by = 0; by < blocksH; by++) {
+            for (let bx = 0; bx < blocksW; bx++) {
+                let sum = 0;
+                let count = 0;
+                for (let y = by * blockSize; y < Math.min((by + 1) * blockSize, height); y++) {
+                    for (let x = bx * blockSize; x < Math.min((bx + 1) * blockSize, width); x++) {
+                        sum += grays[y * width + x];
+                        count++;
+                    }
+                }
+                blockMeans[by * blocksW + bx] = sum / count;
+            }
+        }
+
+        // Apply thresholding based on local block mean
+        for (let y = 0; y < height; y++) {
+            const by = Math.floor(y / blockSize);
+            for (let x = 0; x < width; x++) {
+                const bx = Math.floor(x / blockSize);
+                const mean = blockMeans[by * blocksW + bx];
+                const idx = (y * width + x) * 4;
+                
+                // If pixel is significantly darker than local average, it's text (0), otherwise background (255)
+                // Using a small bias (-15) to be more aggressive with black text on white
+                const value = grays[y * width + x] < (mean - 15) ? 0 : 255;
+                
+                data[idx] = value;
+                data[idx + 1] = value;
+                data[idx + 2] = value;
+                data[idx + 3] = 255;
+            }
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+        addLog('画像の前処理（ブロック適応二値化）が完了しました。');
+    };
+
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -182,31 +244,42 @@ export default function TournamentAnalysis() {
             const allMatchedResults: MatchResult[] = [];
             const pagesToProcess = Math.min(pdf.numPages, 3);
 
-            let previewSet = false;
+            // Create worker once for the entire PDF
+            const worker = await initWorker();
+            try {
+                let previewSet = false;
 
-            for (let i = 1; i <= pagesToProcess; i++) {
-                addLog(`第 ${i} ページのレンダリング中...`);
-                setProcessingStep(`ページ ${i}/${pagesToProcess} を読み取り中...`);
-                const page = await pdf.getPage(i);
-                const viewport = page.getViewport({ scale: 2.5 });
+                for (let i = 1; i <= pagesToProcess; i++) {
+                    addLog(`第 ${i} ページのレンダリング中...`);
+                    setProcessingStep(`ページ ${i}/${pagesToProcess} を読み取り中...`);
+                    const page = await pdf.getPage(i);
+                    // Increase scale to 3.0 for better OCR detail
+                    const viewport = page.getViewport({ scale: 3.0 });
 
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
 
-                if (context) {
-                    await page.render({ canvasContext: context, viewport, canvas }).promise;
+                    if (context) {
+                        // Apply base sharpening/contrast filters during rendering
+                        context.filter = 'contrast(1.2) brightness(1.05)';
+                        await page.render({ canvasContext: context, viewport, canvas }).promise;
+                        context.filter = 'none';
 
-                    if (!previewSet) {
-                        setPreviewUrl(canvas.toDataURL());
-                        previewSet = true;
+                        if (!previewSet) {
+                            setPreviewUrl(canvas.toDataURL());
+                            previewSet = true;
+                        }
+
+                        addLog(`第 ${i} ページのOCRを開始します...`);
+                        preprocessImage(canvas);
+                        const pageResults = await performOcr(canvas, worker);
+                        allMatchedResults.push(...pageResults);
                     }
-
-                    addLog(`第 ${i} ページのOCRを開始します...`);
-                    const pageResults = await performOcr(canvas);
-                    allMatchedResults.push(...pageResults);
                 }
+            } finally {
+                if (worker) await worker.terminate();
             }
 
             finalizeResults(allMatchedResults);
@@ -227,11 +300,11 @@ export default function TournamentAnalysis() {
                 img.onerror = () => reject(new Error('画像の読み込みに失敗しました。'));
             });
 
-            // Increase resolution for better OCR (2x scale)
-            const scale = 2.0;
+            // Increase resolution for better OCR (3x scale)
+            const scale = 3.0;
             const width = (img.naturalWidth || img.width) * scale;
             const height = (img.naturalHeight || img.height) * scale;
-            addLog(`解析用サイズ (2倍スケール): ${Math.round(width)}x${Math.round(height)}`);
+            addLog(`解析用サイズ (3倍スケール): ${Math.round(width)}x${Math.round(height)}`);
 
             const canvas = document.createElement('canvas');
             canvas.width = width;
@@ -239,39 +312,54 @@ export default function TournamentAnalysis() {
             const ctx = canvas.getContext('2d');
             if (!ctx) throw new Error('Canvasの作成に失敗しました。');
 
-            // Clean draw without filters for now to see base performance
+            // Apply initial image quality boost
+            ctx.filter = 'contrast(1.4) brightness(1.05) grayscale(1)';
             ctx.drawImage(img, 0, 0, width, height);
+            ctx.filter = 'none';
+            
+            preprocessImage(canvas);
 
-            addLog('高解像度キャンバスへの描画が完了しました。解析を開始します。');
-            const results = await performOcr(canvas);
-            finalizeResults(results);
+            addLog('高解像度キャンバスへの描画と前処理が完了しました。解析を開始します。');
+            const worker = await initWorker();
+            try {
+                const results = await performOcr(canvas, worker);
+                finalizeResults(results);
+            } finally {
+                if (worker) await worker.terminate();
+            }
         } catch (err: unknown) {
             addLog(`画像処理エラー: ${getErrorMessage(err)}`);
             setLoading(false);
         }
     };
 
-    const performOcr = async (imageSource: HTMLCanvasElement | string): Promise<MatchResult[]> => {
-        let worker;
-        try {
-            addLog('OCRエンジン (日本語専用モード) を起動中...');
-
-            worker = await createWorker('jpn', 1, {
-                logger: m => {
-                    if (m.status === 'recognizing text') {
-                        const progress = Math.round(m.progress * 100);
-                        if (progress % 10 === 0) setProcessingStep(`解析中... ${progress}%`);
-                    }
+    const initWorker = async () => {
+        addLog('OCRエンジン (日・英混合) を起動中...');
+        const worker = await createWorker(['jpn', 'eng'], 1, {
+            logger: (m: Tesseract.LoggerMessage) => {
+                if (m.status === 'recognizing text') {
+                    const progress = Math.round(m.progress * 100);
+                    if (progress % 10 === 0) setProcessingStep(`解析中... ${progress}%`);
                 }
-            });
+            }
+        });
 
-            // PSM 6: Assume a single uniform block of text.
-            // Often better for vertical tournament brackets than PSM 4.
-            await worker.setParameters({
-                tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
-                tessjs_create_hocr: '0',
-                tessjs_create_tsv: '0',
-            });
+        await worker.setParameters({
+            tessedit_pageseg_mode: PSM.SPARSE_TEXT,
+            tessjs_create_hocr: '0',
+            tessjs_create_tsv: '0',
+        });
+        return worker;
+    };
+
+    const performOcr = async (imageSource: HTMLCanvasElement | string, existingWorker?: Tesseract.Worker): Promise<MatchResult[]> => {
+        let worker = existingWorker;
+        let shouldTerminate = false;
+        try {
+            if (!worker) {
+                worker = await initWorker();
+                shouldTerminate = true;
+            }
 
             addLog('文字認識を実行中...');
             const { data } = await worker.recognize(imageSource);
@@ -306,30 +394,13 @@ export default function TournamentAnalysis() {
                     const { player: playerMatch, cleanedName } = matchData;
                     addLog(`[一致確認] "${rawText}" → ${playerMatch.full_name} (抽出: ${cleanedName})`);
 
-                    // Search category_rankings with category and latest year_month
-                    let rankQuery = supabase
-                        .from('category_rankings')
-                        .select('rank, year_month, category')
-                        .eq('player_id', playerMatch.player_id);
-
-                    if (selectedCategory) {
-                        rankQuery = rankQuery.eq('category', selectedCategory);
-                        if (latestYearMonth) {
-                            rankQuery = rankQuery.eq('year_month', latestYearMonth);
-                        }
-                    }
-
-                    const { data: rankData } = await rankQuery
-                        .order('year_month', { ascending: false })
-                        .limit(1);
-
                     matches.push({
-                        originalText: cleanedName, // Use cleaned/joined name for display
+                        originalText: cleanedName,
                         normalizedText: NameNormalizer.normalizeForMatching(cleanedName),
                         player: playerMatch,
-                        rank: rankData?.[0]?.rank || null,
+                        rank: null, // Will be filled in finalizeResults
                         points: playerMatch.ranking_point || null,
-                        category: rankData?.[0]?.category || playerMatch.category || null,
+                        category: null, // Will be filled in finalizeResults
                         confidence: line.confidence || 0
                     });
                 } else {
@@ -338,12 +409,14 @@ export default function TournamentAnalysis() {
                 }
             }
 
-            await worker.terminate();
-            addLog('すべてのOCR・照合プロセスが終了しました。');
+            if (shouldTerminate && worker) {
+                await worker.terminate();
+            }
+            addLog('テキスト・照合プロセスが終了しました。');
             return matches;
         } catch (err: unknown) {
             addLog(`OCRエラー: ${getErrorMessage(err)}`);
-            if (worker) await worker.terminate();
+            if (shouldTerminate && worker) await worker.terminate();
             return [];
         }
     };
@@ -353,8 +426,8 @@ export default function TournamentAnalysis() {
      * Uses a fuzzy wildcard approach to handle spaces and minor OCR errors.
      */
     const findBestPlayerMatch = async (rawText: string): Promise<{ player: Player; cleanedName: string } | null> => {
-        // Extract Japanese character blocks (Kanji, Hiragana, Katakana)
-        const jpNameRegex = /[\u4e00-\u9faf\u3040-\u309f\u30a0-\u30ff]+/g;
+        // Extract Japanese character blocks (Kanji, Hiragana, Katakana, and specific symbols often in names)
+        const jpNameRegex = /[\u4e00-\u9faf\u3040-\u309f\u30a0-\u30ff々ヶ]+/g;
         const jpMatches = rawText.match(jpNameRegex) || [];
 
         if (jpMatches.length === 0) return null;
@@ -363,77 +436,123 @@ export default function TournamentAnalysis() {
          * Helper to search with wildcards between characters
          * e.g., "太田晴" -> "%太%田%晴%"
          */
-        const fuzzySearch = async (term: string) => {
-            if (term.length < 2) return null;
+        const fuzzySearch = async (term: string): Promise<Player[]> => {
+            if (term.length < 2) return [];
             const fuzzyTerm = `%${term.split('').join('%')}%`;
 
             const { data } = await supabase
                 .from('players')
                 .select('*')
                 .ilike('full_name', fuzzyTerm)
-                .limit(1);
+                .limit(10); // Check more candidates for better accuracy
 
-            return data?.[0] || null;
+            return data || [];
+        };
+
+        const candidates: { player: Player; cleanedName: string; score: number }[] = [];
+
+        const collectCandidates = async (term: string) => {
+            const foundPlayers = await fuzzySearch(term);
+            for (const p of foundPlayers) {
+                const score = calculateMatchRate(term, p.full_name);
+                if (score >= 60) {
+                    candidates.push({ player: p, cleanedName: term, score });
+                }
+            }
         };
 
         // --- STEP 1: Try joining adjacent blocks (Full Name Priority) ---
-        // Try joining 3 blocks first, then 2 blocks
         if (jpMatches.length >= 3) {
             for (let i = 0; i < jpMatches.length - 2; i++) {
-                const combined = jpMatches[i] + jpMatches[i + 1] + jpMatches[i + 2];
-                const player = await fuzzySearch(combined);
-                if (player) return { player, cleanedName: combined };
+                await collectCandidates(jpMatches[i] + jpMatches[i + 1] + jpMatches[i + 2]);
             }
         }
 
         if (jpMatches.length >= 2) {
             for (let i = 0; i < jpMatches.length - 1; i++) {
-                const combined = jpMatches[i] + jpMatches[i + 1];
-                const player = await fuzzySearch(combined);
-                if (player) return { player, cleanedName: combined };
+                await collectCandidates(jpMatches[i] + jpMatches[i + 1]);
             }
         }
 
         // --- STEP 2: Try single blocks (Fallback) ---
-        // Sort by length decending to pick the most descriptive block first
-        const sortedTerms = [...jpMatches].sort((a, b) => b.length - a.length);
-        for (const term of sortedTerms) {
-            const player = await fuzzySearch(term);
-            if (player) return { player, cleanedName: term };
+        for (const term of jpMatches) {
+            if (term.length >= 2) await collectCandidates(term);
         }
 
-        return null;
+        if (candidates.length === 0) return null;
+
+        // Sort by score descending
+        candidates.sort((a, b) => b.score - a.score);
+
+        // If top scores are equal, prioritize "managed" player (if we knew which ones they are...)
+        // For now, just return the best score
+        return { player: candidates[0].player, cleanedName: candidates[0].cleanedName };
     };
 
-    const finalizeResults = (allMatches: MatchResult[]) => {
+    const finalizeResults = async (allMatches: MatchResult[]) => {
         addLog(`最終結果を整理中 (${allMatches.length} 件のヒット)...`);
 
-        // Filter and Enhance results
+        // 1. Filter out low confidence matches and duplicate players early
         const enhancedResults = allMatches
             .map(m => {
                 const matchRate = m.player ? calculateMatchRate(m.originalText, m.player.full_name) : 0;
-                // Weighted confidence: heavily favor high string similarity (70% weight) over OCR engine confidence (30% weight)
                 const combinedConfidence = (m.confidence * 0.3) + (matchRate * 0.7);
                 return { ...m, matchRate, confidence: combinedConfidence };
             })
-            // Filter out low similarity matches (less than 60% is usually noise or short unintentional matches)
-            .filter(m => (m.matchRate || 0) >= 60);
+            .filter(m => m.matchRate >= 60);
 
-        const map = new Map<string, MatchResult & { matchRate: number }>();
+        // Deduplicate by player_id, keeping highest confidence
+        const uniqueMatchesMap = new Map<string, typeof enhancedResults[0]>();
         enhancedResults.forEach(m => {
-            const id = m.player?.player_id;
-            if (!id) return;
-            const existingMatch = map.get(id);
-            if (!existingMatch || existingMatch.confidence < m.confidence) {
-                map.set(id, m);
+            const pid = m.player?.player_id;
+            if (!pid) return;
+            const existing = uniqueMatchesMap.get(pid);
+            if (!existing || existing.confidence < m.confidence) {
+                uniqueMatchesMap.set(pid, m);
             }
         });
 
-        const sortedResults = Array.from(map.values()).sort((a, b) => b.confidence - a.confidence);
+        const dedupedResults = Array.from(uniqueMatchesMap.values());
+        if (dedupedResults.length === 0) {
+            setResults([]);
+            setLoading(false);
+            return;
+        }
+
+        // 2. Batch fetch rankings for all unique players
+        addLog(`${dedupedResults.length} 名のランキングデータを取得中...`);
+        const playerIds = dedupedResults.map(m => m.player?.player_id).filter(Boolean) as string[];
+
+        let rankQuery = supabase
+            .from('category_rankings')
+            .select('player_id, rank, category, year_month')
+            .in('player_id', playerIds);
+
+        if (selectedCategory) {
+            rankQuery = rankQuery.eq('category', selectedCategory);
+            if (latestYearMonth) {
+                rankQuery = rankQuery.eq('year_month', latestYearMonth);
+            }
+        }
+
+        const { data: rankingData } = await rankQuery.order('year_month', { ascending: false });
+
+        // Map ranking data back to results
+        const finalResults = dedupedResults.map(m => {
+            const playerRanks = rankingData?.filter(r => r.player_id === m.player?.player_id) || [];
+            const latestRank = playerRanks[0]; // Already ordered by year_month desc
+            return {
+                ...m,
+                rank: latestRank?.rank || null,
+                category: latestRank?.category || m.player?.category || null
+            };
+        });
+
+        const sortedResults = finalResults.sort((a, b) => b.confidence - a.confidence);
         setResults(sortedResults);
         setLoading(false);
         setProcessingStep('');
-        addLog(`フィルタリング完了: ${sortedResults.length} 件の有効なマッチを抽出しました。`);
+        addLog(`解析完了: ${sortedResults.length} 件の結果を表示します。`);
     };
 
     return (
