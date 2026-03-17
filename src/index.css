@@ -58,6 +58,11 @@
   .glass-panel {
     @apply bg-white/80 backdrop-blur-md border border-white/40 shadow-xl rounded-2xl;
   }
+
+  /* Prevent auto-zoom on iOS focus */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
 }
 
 /* Custom Scrollbar for better aesthetics */
