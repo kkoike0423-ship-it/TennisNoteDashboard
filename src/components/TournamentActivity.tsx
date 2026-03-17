@@ -581,10 +581,15 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                                                         disabled={isProcessing}
                                                         onClick={(e) => { 
                                                             e.stopPropagation(); 
+                                                            const rawDate = t.date || t.tournament_date || '';
+                                                            const normalizedDate = rawDate.includes('T') 
+                                                                ? rawDate.split('T')[0] 
+                                                                : rawDate.replace(/\//g, '-');
+
                                                             const normalized = {
                                                                 ...t,
                                                                 name: t.name || t.tournament_name || '',
-                                                                date: t.date || t.tournament_date || '',
+                                                                date: normalizedDate,
                                                                 match_type: (t.match_type || t.format || 'Single').toLowerCase().includes('double') ? 'Double' : 'Single'
                                                             };
                                                             setEditingTournament(normalized); 
