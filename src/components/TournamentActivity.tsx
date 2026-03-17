@@ -52,7 +52,7 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
   useEffect(() => {
     if (expandedTournament) {
       setTimeout(() => {
-        const element = document.getElementById(`match-list-${expandedTournament}`);
+        const element = document.getElementById(`tournament-row-${expandedTournament}`);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
@@ -433,8 +433,9 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
                             {monthTournaments.map(t => (
                                 <React.Fragment key={t.tournament_id}>
                                     <tr 
+                                        id={`tournament-row-${t.tournament_id}`}
                                         onClick={() => setExpandedTournament(expandedTournament === t.tournament_id ? null : t.tournament_id)}
-                                        className={`group cursor-pointer transition-all ${expandedTournament === t.tournament_id ? 'bg-gray-900 text-white shadow-2xl scale-[1.01] z-10 relative' : 'bg-white hover:bg-gray-50 text-gray-900 border border-gray-100 shadow-sm'}`}
+                                        className={`group cursor-pointer transition-all scroll-mt-24 ${expandedTournament === t.tournament_id ? 'bg-gray-900 text-white shadow-2xl scale-[1.01] z-10 relative' : 'bg-white hover:bg-gray-50 text-gray-900 border border-gray-100 shadow-sm'}`}
                                     >
                                         <td className="px-1 py-3 sm:py-6 sm:px-6 first:rounded-l-2xl font-black text-sm">
                                             {(() => {
