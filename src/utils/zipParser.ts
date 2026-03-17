@@ -222,7 +222,7 @@ export const parseAndUploadZip = async (file: File, onProgress: (msg: string) =>
                 tournament_date: normalizeDate(row.tournamentDate || ''),
                 tournament_name: row.tournamentName,
                 venue: row.venue,
-                match_type: row.matchType
+                match_type: (row.matchType || row.format || 'Single').toLowerCase().includes('double') ? 'Double' : 'Single'
             })).filter(r => r.tournament_id && r.player_id);
 
             onProgress(`Uploading ${tournamentRows.length} Tournaments...`);
