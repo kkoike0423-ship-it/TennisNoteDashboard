@@ -21,7 +21,7 @@ export const TournamentForm: React.FC<TournamentFormProps> = ({
   const [formData, setFormData] = useState<Partial<Tournament>>(initialData);
 
   return (
-    <div id="tournament-edit-form" className="mb-10 p-5 sm:p-10 bg-gray-900 rounded-[2.5rem] text-white shadow-3xl relative overflow-hidden scroll-mt-24 border-2 border-white/5">
+    <div id="tournament-edit-form" className="mb-10 p-5 sm:p-10 bg-gray-900 rounded-2xl sm:rounded-[2.5rem] text-white shadow-3xl relative overflow-hidden scroll-mt-24 border-2 border-white/5 mx-[-1rem] sm:mx-0">
       <div className="absolute top-0 left-0 w-64 h-64 bg-tennis-green-600/10 blur-[100px] rounded-full -ml-32 -mt-32"></div>
       
       <div className="flex items-center justify-between mb-8 relative z-10">

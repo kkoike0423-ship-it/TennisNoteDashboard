@@ -62,7 +62,7 @@ export const MatchForm: React.FC<MatchFormProps> = ({
   };
 
   return (
-    <div id="game-edit-form" className="mb-8 p-5 sm:p-10 bg-gray-900 rounded-3xl text-white shadow-3xl relative overflow-hidden scroll-mt-24 border-2 border-white/5">
+    <div id="game-edit-form" className="mb-8 p-5 sm:p-10 bg-gray-900 rounded-2xl sm:rounded-3xl text-white shadow-3xl relative overflow-hidden scroll-mt-24 border-2 border-white/5 mx-[-1rem] sm:mx-0">
       <div className="absolute top-0 right-0 w-64 h-64 bg-tennis-green-600/10 blur-[100px] rounded-full"></div>
       
       <div className="flex items-center justify-between mb-6 relative z-10">
@@ -133,17 +133,17 @@ export const MatchForm: React.FC<MatchFormProps> = ({
           )}
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
           {[1, 2, 3, 4, 5].map(setNum => (
-            <div key={setNum} className="bg-white/5 p-3 rounded-xl border border-white/10">
+            <div key={setNum} className="bg-white/5 p-2 sm:p-3 rounded-xl border border-white/10">
               <p className="text-[9px] font-black text-center mb-2 text-white/20 uppercase tracking-widest">Set {setNum}</p>
-              <div className="flex gap-1.5 font-mono">
-                <input disabled={isProcessing} type="number" className="w-full bg-white text-gray-900 text-center py-2 rounded-lg font-black text-base disabled:opacity-50" value={(localGame[`set${setNum}_self` as keyof Game] as number) || 0} onChange={e => updateSetScore(setNum, 'self', e.target.value)} />
-                <input disabled={isProcessing} type="number" className="w-full bg-white text-gray-900 text-center py-2 rounded-lg font-black text-base disabled:opacity-50" value={(localGame[`set${setNum}_opp` as keyof Game] as number) || 0} onChange={e => updateSetScore(setNum, 'opp', e.target.value)} />
+              <div className="flex gap-1 sm:gap-1.5 font-mono">
+                <input disabled={isProcessing} type="number" className="w-full bg-white text-gray-900 text-center py-1 sm:py-2 rounded-lg font-black text-sm sm:text-base disabled:opacity-50" value={(localGame[`set${setNum}_self` as keyof Game] as number) || 0} onChange={e => updateSetScore(setNum, 'self', e.target.value)} />
+                <input disabled={isProcessing} type="number" className="w-full bg-white text-gray-900 text-center py-1 sm:py-2 rounded-lg font-black text-sm sm:text-base disabled:opacity-50" value={(localGame[`set${setNum}_opp` as keyof Game] as number) || 0} onChange={e => updateSetScore(setNum, 'opp', e.target.value)} />
               </div>
             </div>
           ))}
-          <div className="bg-tennis-green-500/10 p-3 rounded-xl border border-tennis-green-500/20">
+          <div className="bg-tennis-green-500/10 p-2 sm:p-3 rounded-xl border border-tennis-green-500/20">
             <p className="text-[9px] font-black text-center mb-2 text-tennis-green-400 uppercase tracking-widest">TieBreak</p>
             <div className="flex gap-1.5 font-mono">
               <input disabled={isProcessing} type="number" className="w-full bg-white text-gray-900 text-center py-2 rounded-lg font-black text-base border border-tennis-green-500/20 disabled:opacity-50" value={localGame.tb_self || 0} onChange={e => setLocalGame({ ...localGame, tb_self: parseInt(e.target.value) || 0 })} />

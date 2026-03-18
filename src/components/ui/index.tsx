@@ -65,7 +65,7 @@ export const Input = ({ label, className, ...props }: { label?: string } & React
     {label && <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">{label}</label>}
     <input 
       className={cn(
-        "w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-tennis-green-500/20 focus:border-tennis-green-500 transition-all",
+        "w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-tennis-green-500/20 focus:border-tennis-green-500 transition-all",
         className
       )}
       {...props}
@@ -79,7 +79,7 @@ export const Select = ({ label, children, className, ...props }: { label?: strin
     <div className="relative">
       <select 
         className={cn(
-          "w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-tennis-green-500/20 focus:border-tennis-green-500 transition-all appearance-none",
+          "w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-tennis-green-500/20 focus:border-tennis-green-500 transition-all appearance-none",
           className
         )}
         {...props}
@@ -92,3 +92,4 @@ export const Select = ({ label, children, className, ...props }: { label?: strin
     </div>
   </div>
 );
+

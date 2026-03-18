@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Search, Database, Users, Calendar, AlertCircle, Loader2, Table } from 'lucide-react';
+import { Database, Calendar } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import type { Player, CategoryRanking } from '../types/database';
+import { RankingFilters } from './ranking/RankingFilters';
+import { RankingTable } from './ranking/RankingTable';
+import { PlayerChartModal } from './ranking/PlayerChartModal';
 
 interface DisplayData {
     player: Player;
     ranking: CategoryRanking | null;
 }
+
 
 interface DataManagementProps {
     initialCategory?: string;
@@ -25,6 +29,8 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [activeManagedPlayerId, setActiveManagedPlayerId] = useState<string | null>(null);
     const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set());
+    const [selectedPlayerChart, setSelectedPlayerChart] = useState<Player | null>(null);
+
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -52,7 +58,7 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                 const uniqueGenders = Array.from(new Set(
                     data.map(g => (g.gender || '').trim())
                 ))
-                    .filter(g => g && g.length > 0) // Explicitly remove empty strings
+                    .filter(g => g && g.length > 0)
                     .sort();
                 setAvailableGenders(uniqueGenders);
             }
@@ -74,7 +80,6 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
             if (watched) {
                 setWatchedIds(new Set(watched.map(w => w.player_id)));
                 
-                // Also find the active managed player
                 const managed = watched.find(w => w.player_type === 'managed');
                 if (managed) setActiveManagedPlayerId(managed.player_id);
             }
@@ -90,7 +95,6 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
             if (!selectedCategory) return;
             setLoading(true);
 
-            // 1. Get latest rankings for this category
             const { data: rankings } = await supabase
                 .from('category_rankings')
                 .select('*')
@@ -102,7 +106,6 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
             if (rankings && rankings.length > 0) {
                 setYearMonth(rankings[0].year_month);
 
-                // 2. Get player details for these rankings
                 const playerIds = rankings.map(r => r.player_id);
                 const { data: players } = await supabase
                     .from('players')
@@ -113,7 +116,7 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                     const combined = rankings.map(r => ({
                         ranking: r,
                         player: players.find(p => p.player_id === r.player_id) as Player
-                    })).filter(item => item.player); // Ensure we have player info
+                    })).filter(item => item.player);
 
                     setDisplayData(combined);
                 }
@@ -142,7 +145,6 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
         }
 
         if (watchedIds.has(player.player_id)) {
-            // Remove
             let dbDelete = supabase
                 .from('user_watched_players')
                 .delete()
@@ -167,7 +169,6 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                 window.dispatchEvent(new CustomEvent('watched-players-changed', { detail: { playerType: type } }));
             }
         } else {
-            // Add
             const { error } = await supabase
                 .from('user_watched_players')
                 .insert({
@@ -208,7 +209,7 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                         ランキング
                     </h1>
                     <p className="text-tennis-green-600 font-bold mt-1">
-                        愛知県の選手と最新ランキングをカテゴリー別に閲覧できます。
+                        愛知県の選手情報をカテゴリー別にランキング順で閲覧できます。
                     </p>
                 </div>
                 <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-tennis-green-100 shrink-0">
@@ -219,157 +220,34 @@ export default function DataManagement({ initialCategory, initialGender }: DataM
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="glass-panel p-6 shadow-sm flex flex-col gap-4">
-                    <label className="text-sm font-bold text-gray-600 flex items-center gap-2">
-                        <Users size={16} /> 性別
-                    </label>
-                    <div className="flex flex-col bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
-                        <button
-                            onClick={() => setSelectedGender('all')}
-                            className={`flex-1 py-3 px-3 text-sm font-bold transition-all border-b border-gray-200 last:border-none ${selectedGender === 'all'
-                                    ? 'bg-white text-tennis-green-600'
-                                    : 'text-gray-400 hover:text-gray-600 bg-transparent'
-                                }`}
-                        >
-                            すべて
-                        </button>
-                        {availableGenders.map(g => (
-                            <button
-                                key={g}
-                                onClick={() => setSelectedGender(g)}
-                                className={`flex-1 py-3 px-3 text-sm font-bold transition-all border-b border-gray-200 last:border-none ${selectedGender === g
-                                        ? 'bg-white text-tennis-green-600'
-                                        : 'text-gray-400 hover:text-gray-600 bg-transparent'
-                                    }`}
-                            >
-                                {g}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+            <RankingFilters 
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onCategoryChange={setSelectedCategory}
+                availableGenders={availableGenders}
+                selectedGender={selectedGender}
+                onGenderChange={setSelectedGender}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+            />
 
-                <div className="md:col-span-1 glass-panel p-6 shadow-sm flex flex-col gap-4">
-                    <label className="text-sm font-bold text-gray-600 flex items-center gap-2">
-                        <Table size={16} /> カテゴリー
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                        {categories.map(cat => (
-                            <button
-                                key={cat}
-                                onClick={() => setSelectedCategory(cat)}
-                                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${selectedCategory === cat
-                                        ? 'bg-tennis-green-500 text-white shadow-md transform scale-105'
-                                        : 'bg-white text-gray-500 hover:bg-tennis-green-50 border border-gray-100'
-                                    }`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+            <RankingTable 
+                loading={loading}
+                data={filteredData}
+                selectedCategory={selectedCategory}
+                watchedIds={watchedIds}
+                actionLoading={actionLoading}
+                onAction={handleAction}
+                onPlayerClick={setSelectedPlayerChart}
+            />
 
-                <div className="md:col-span-1 glass-panel p-6 shadow-sm flex flex-col gap-4">
-                    <label className="text-sm font-bold text-gray-600 flex items-center gap-2">
-                        <Search size={16} /> 選手名・所属
-                    </label>
-                    <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                        <input
-                            type="text"
-                            placeholder="検索..."
-                            className="w-full pl-12 pr-4 py-3 bg-white/50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-tennis-green-500 transition-all font-medium"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                </div>
-            </div>
-
-            <div className="glass-panel shadow-sm border border-tennis-green-100 overflow-hidden">
-                <div className="p-6 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center">
-                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <Users size={20} className="text-tennis-green-600" />
-                        {selectedCategory} 選手リスト
-                    </h3>
-                    <span className="text-sm font-bold text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-100">
-                        {filteredData.length} 名表示中
-                    </span>
-                </div>
-
-                <div className="overflow-x-auto min-h-[400px]">
-                    {loading ? (
-                        <div className="h-[400px] flex flex-col items-center justify-center text-tennis-green-600">
-                            <Loader2 className="w-12 h-12 animate-spin mb-4" />
-                            <p className="font-bold animate-pulse">データを読み込み中...</p>
-                        </div>
-                    ) : filteredData.length > 0 ? (
-                        <table className="w-full text-left border-collapse">
-                            <thead className="sticky top-0 bg-white/90 backdrop-blur-md z-10 border-b border-gray-100">
-                                <tr>
-                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center min-w-[50px]">順位</th>
-                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest min-w-[140px]">選手名 / 所属</th>
-                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right min-w-[80px]">ポイント</th>
-                                    <th className="px-3 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center min-w-[80px]">登録</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {filteredData.map((item, idx) => (
-                                    <tr key={idx} className="hover:bg-tennis-green-50/50 transition-colors group">
-                                        <td className="px-3 py-5 text-center">
-                                            <span className="text-xl sm:text-2xl font-black text-tennis-green-600 whitespace-nowrap">
-                                                {item.ranking?.rank}
-                                            </span>
-                                        </td>
-                                        <td className="px-3 py-5 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] bg-gray-100 text-gray-500 font-bold px-1.5 py-0.5 rounded shrink-0">
-                                                    {item.player.category}
-                                                </span>
-                                                <p className="font-bold text-gray-800 text-base sm:text-lg truncate">{item.player.full_name}</p>
-                                            </div>
-                                            <p className="text-[10px] text-gray-400 font-bold mt-0.5 truncate">{item.player.team || '所属なし'}</p>
-                                        </td>
-                                        <td className="px-3 py-5 text-right">
-                                            <div className="flex items-center justify-end whitespace-nowrap">
-                                                <span className="font-bold text-tennis-green-700 text-base sm:text-lg">
-                                                    {item.ranking?.rank === 0 ? '-' : item.player.ranking_point.toLocaleString()}
-                                                </span>
-                                                <span className="text-[10px] text-gray-400 font-bold ml-1 italic shrink-0">pt</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-3 py-5">
-                                            <div className="flex items-center justify-center">
-                                                <button
-                                                    onClick={() => handleAction(item.player, 'opponent')}
-                                                    disabled={actionLoading?.startsWith(item.player.player_id)}
-                                                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-[11px] font-black shadow-sm ${
-                                                        watchedIds.has(item.player.player_id)
-                                                        ? 'bg-amber-500 text-white'
-                                                        : 'bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white'
-                                                    }`}
-                                                >
-                                                    {watchedIds.has(item.player.player_id) ? '解除' : '対戦相手'}
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <div className="h-[400px] flex flex-col items-center justify-center text-center p-12">
-                            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
-                                <AlertCircle size={40} className="text-gray-200" />
-                            </div>
-                            <h4 className="text-xl font-bold text-gray-700 mb-2">データが見つかりません</h4>
-                            <p className="text-gray-400 max-w-sm">
-                                指定されたカテゴリーまたは検索条件に一致する選手は見つかりませんでした。
-                            </p>
-                        </div>
-                    )}
-                </div>
-            </div>
+            {selectedPlayerChart && (
+                <PlayerChartModal 
+                    player={selectedPlayerChart} 
+                    onClose={() => setSelectedPlayerChart(null)} 
+                />
+            )}
         </div>
     );
 }
+
