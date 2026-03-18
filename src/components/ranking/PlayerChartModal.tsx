@@ -47,18 +47,26 @@ export const PlayerChartModal: React.FC<PlayerChartModalProps> = ({ player, onCl
     fetchData();
   }, [player.player_id, player.category]);
 
-  // Combine or harmonize data for charts if needed, but here we show them separately
-  const chartData = rankingHistory.map(r => {
-    const p = pointHistory.find(ph => ph.year_month === r.year_month);
-    return {
-      month: r.year_month,
-      rank: r.rank,
-      points: p ? p.points_value : null
-    };
-  });
+  // Combine all unique months from both data sources
+  const chartData = React.useMemo(() => {
+    const months = Array.from(new Set([
+      ...rankingHistory.map(r => r.year_month),
+      ...pointHistory.map(p => p.year_month)
+    ])).sort();
+
+    return months.map(month => {
+      const r = rankingHistory.find(h => h.year_month === month);
+      const p = pointHistory.find(h => h.year_month === month);
+      return {
+        month,
+        rank: r ? r.rank : null,
+        points: p ? p.points_value : null
+      };
+    }).filter(d => d.rank !== null || d.points !== null);
+  }, [rankingHistory, pointHistory]);
 
   const formatMonth = (val: string) => {
-    if (val.length === 6) return `${val.slice(2, 4)}/${val.slice(4)}`;
+    if (typeof val === 'string' && val.length === 6) return `${val.slice(2, 4)}/${val.slice(4)}`;
     return val;
   };
 
@@ -70,7 +78,7 @@ export const PlayerChartModal: React.FC<PlayerChartModalProps> = ({ player, onCl
         <div className="sticky top-0 bg-white/80 backdrop-blur-md z-10 px-6 py-5 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-tennis-green-100 flex items-center justify-center text-tennis-green-700 font-black text-xl shadow-inner">
-              {player.last_name[0]}
+              {player.last_name ? player.last_name[0] : (player.full_name ? player.full_name[0] : '?')}
             </div>
             <div>
               <h3 className="text-xl font-black text-gray-900 leading-tight">{player.full_name}</h3>
@@ -90,6 +98,10 @@ export const PlayerChartModal: React.FC<PlayerChartModalProps> = ({ player, onCl
             <div className="py-20 flex flex-col items-center justify-center gap-4 text-tennis-green-600">
               <Loader2 className="w-10 h-10 animate-spin" />
               <p className="font-bold text-xs uppercase tracking-widest animate-pulse">Loading Analytics...</p>
+            </div>
+          ) : chartData.length === 0 ? (
+            <div className="py-20 text-center text-gray-400 font-bold">
+              履歴データが見つかりませんでした。
             </div>
           ) : (
             <>
@@ -116,6 +128,7 @@ export const PlayerChartModal: React.FC<PlayerChartModalProps> = ({ player, onCl
                         axisLine={false}
                         tickLine={false}
                         width={30}
+                        domain={['auto', 'auto']}
                       />
                       <Tooltip 
                         contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
@@ -128,6 +141,7 @@ export const PlayerChartModal: React.FC<PlayerChartModalProps> = ({ player, onCl
                         strokeWidth={4} 
                         dot={{ r: 4, fill: '#fff', stroke: '#10b981', strokeWidth: 2 }}
                         activeDot={{ r: 6, strokeWidth: 0 }}
+                        connectNulls
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -174,6 +188,7 @@ export const PlayerChartModal: React.FC<PlayerChartModalProps> = ({ player, onCl
                         fillOpacity={1} 
                         fill="url(#colorPoints)" 
                         strokeWidth={4}
+                        connectNulls
                       />
                     </AreaChart>
                   </ResponsiveContainer>
