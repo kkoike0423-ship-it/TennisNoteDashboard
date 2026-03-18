@@ -16,6 +16,26 @@ export const PlayerChartModal: React.FC<PlayerChartModalProps> = ({ player, onCl
   const [rankingHistory, setRankingHistory] = useState<CategoryRanking[]>([]);
   const [pointHistory, setPointHistory] = useState<PlayerRankingHistory[]>([]);
 
+  const getPointValue = (history?: PlayerRankingHistory) => {
+    if (!history) return null;
+
+    const raw = history.points_raw as unknown;
+    if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+    if (typeof raw === 'string') {
+      const parsed = Number.parseFloat(raw);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+
+    const normalized = history.points_value as unknown;
+    if (typeof normalized === 'number' && Number.isFinite(normalized)) return normalized;
+    if (typeof normalized === 'string') {
+      const parsed = Number.parseFloat(normalized);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+
+    return null;
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -47,20 +67,19 @@ export const PlayerChartModal: React.FC<PlayerChartModalProps> = ({ player, onCl
     fetchData();
   }, [player.player_id, player.category]);
 
-  // Combine all unique months from both data sources
+  // Mirror the Android app: use the selected category's ranking months and join
+  // point history by player + year_month.
   const chartData = React.useMemo(() => {
-    const months = Array.from(new Set([
-      ...rankingHistory.map(r => r.year_month),
-      ...pointHistory.map(p => p.year_month)
-    ])).sort();
+    const pointHistoryByMonth = new Map(
+      pointHistory.map(history => [history.year_month, history])
+    );
 
-    return months.map(month => {
-      const r = rankingHistory.find(h => h.year_month === month);
-      const p = pointHistory.find(h => h.year_month === month);
+    return rankingHistory.map(ranking => {
+      const point = pointHistoryByMonth.get(ranking.year_month);
       return {
-        month,
-        rank: r ? r.rank : null,
-        points: p ? p.points_value : null
+        month: ranking.year_month,
+        rank: ranking.rank ?? null,
+        points: getPointValue(point)
       };
     }).filter(d => d.rank !== null || d.points !== null);
   }, [rankingHistory, pointHistory]);
