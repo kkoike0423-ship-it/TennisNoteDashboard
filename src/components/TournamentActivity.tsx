@@ -64,9 +64,13 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
       const { data: rData } = await supabase.from('category_rankings').select('player_id, year_month, rank, category').in('player_id', opponentIds).in('year_month', tournamentMonths);
 
       const combined = (tData || []).map(t => {
-        const tMonth = t.date ? t.date.substring(0, 7) : null;
+        const actualDate = t.date || (t as any).tournament_date || '';
+        const actualName = t.name || (t as any).tournament_name || '名称未設定';
+        const tMonth = actualDate ? actualDate.substring(0, 7).replace(/\//g, '-') : 'Unknown';
         return {
           ...t,
+          date: actualDate,
+          name: actualName,
           games: (gData || []).filter(g => g.tournament_id === t.tournament_id).map(g => {
             const op1 = (pData || []).find(p => p.player_id === g.opponent1_id);
             const op2 = (pData || []).find(p => p.player_id === g.opponent2_id);
@@ -90,7 +94,11 @@ export const TournamentActivity: React.FC<TournamentActivityProps> = ({ activeMa
   const groupedTournaments = useMemo(() => {
     const groups: { [key: string]: TournamentWithGames[] } = {};
     tournaments.forEach(t => {
-      const month = t.date ? t.date.substring(0, 7) : 'Unknown';
+      let month = 'Unknown';
+      if (t.date) {
+        // Normalize both YYYY-MM and YYYY/MM to YYYY-MM for consistent grouping
+        month = t.date.substring(0, 7).replace(/\//g, '-');
+      }
       if (!groups[month]) groups[month] = [];
       groups[month].push(t);
     });

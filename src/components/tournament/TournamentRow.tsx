@@ -42,8 +42,8 @@ export const TournamentRow: React.FC<TournamentRowProps> = ({
         onClick={onToggleExpand}
         className={`group cursor-pointer transition-all ${isExpanded ? 'bg-gray-900 text-white shadow-2xl scale-[1.01] z-10 relative' : 'bg-white hover:bg-gray-50 text-gray-900 border border-gray-100 shadow-sm'}`}
       >
-        <td className="px-6 py-4 first:rounded-l-2xl font-black text-sm">
-          {t.date?.split('-')[2] || '--'}日
+        <td className="px-6 py-4 first:rounded-l-2xl font-black text-xs sm:text-sm whitespace-nowrap">
+          {t.date ? t.date.replace(/-/g, '/') : '--'}
         </td>
         <td className="px-6 py-4 text-sm font-black tracking-tight flex items-center gap-3">
           <span className={`w-5 h-5 flex items-center justify-center rounded text-[10px] font-black shrink-0 ${t.match_type?.toLowerCase().includes('double') ? 'bg-orange-500 text-white' : 'bg-blue-500 text-white'}`}>
